@@ -101,6 +101,8 @@ export default function EarthOnlinePage() {
   const [newMarker, setNewMarker] = useState<{ lat: number; lng: number; message: string; emotion: keyof typeof emotionConfig }>({ lat: 39.9042, lng: 116.4074, message: '', emotion: 'regret' })
   const [mapLoaded, setMapLoaded] = useState(false)
   const [showStats, setShowStats] = useState(true)
+  const [showMapControls, setShowMapControls] = useState(true)
+  const [showFilters, setShowFilters] = useState(true)
   const [mapStyle, setMapStyle] = useState<'normal' | 'satellite'>('normal')
   const [is3D, setIs3D] = useState(false)
   const [filterEmotion, setFilterEmotion] = useState<string | null>(null)
@@ -494,7 +496,6 @@ export default function EarthOnlinePage() {
           <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 2 }}>已标记遗憾</div>
           <button onClick={() => setShowStats(!showStats)} style={{ background: 'none', border: 'none', color: '#a0a8b8', cursor: 'pointer', fontSize: 14 }}>{showStats ? '▼' : '▲'}</button>
         </div>
-        <div style={{ fontSize: 36, fontWeight: 300, color: '#e0a0b0', marginBottom: 12 }}>{markers.length}</div>
         {showStats && (
           <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             {(Object.keys(emotionConfig) as (keyof typeof emotionConfig)[]).map(key => (
@@ -511,35 +512,58 @@ export default function EarthOnlinePage() {
       </div>
 
       {/* Map Controls */}
-      <div style={{ position: 'absolute', top: 100, left: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'fadeInLeft 0.6s ease-out' }}>
-        <button onClick={toggleMapStyle} style={{ padding: '8px 12px', borderRadius: 8, background: mapStyle === 'satellite' ? 'rgba(180, 100, 120, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${mapStyle === 'satellite' ? 'rgba(180, 100, 120, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
-          {mapStyle === 'normal' ? '🛰️ 卫星' : '🗺️ 地图'}
+      {!showMapControls ? (
+        <button
+          onClick={() => setShowMapControls(true)}
+          style={{ position: 'absolute', top: 100, left: 20, zIndex: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(20, 30, 50, 0.85)', border: '1px solid rgba(160, 180, 220, 0.3)', color: '#fff', cursor: 'pointer', fontSize: 11, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)' }}
+        >
+          ⚙️ 显示控制
         </button>
-        <button onClick={toggle3D} style={{ padding: '8px 12px', borderRadius: 8, background: is3D ? 'rgba(100, 120, 200, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${is3D ? 'rgba(100, 120, 200, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
-          {is3D ? '📐 3D' : '📐 2D'}
-        </button>
-        <button onClick={() => setShowConnections(!showConnections)} style={{ padding: '8px 12px', borderRadius: 8, background: showConnections ? 'rgba(100, 180, 140, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showConnections ? 'rgba(100, 180, 140, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
-          🔗 连接线
-        </button>
-        <button onClick={() => setShowTimeline(!showTimeline)} style={{ padding: '8px 12px', borderRadius: 8, background: showTimeline ? 'rgba(200, 160, 100, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showTimeline ? 'rgba(200, 160, 100, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
-          📅 时间轴
-        </button>
-        <button onClick={() => setShowAchievements(!showAchievements)} style={{ padding: '8px 12px', borderRadius: 8, background: showAchievements ? 'rgba(180, 160, 220, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showAchievements ? 'rgba(180, 160, 220, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
-          🏆 成就 ({unlockedAchievements.length}/{achievements.length})
-        </button>
-      </div>
+      ) : (
+        <div style={{ position: 'absolute', top: 100, left: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'fadeInLeft 0.6s ease-out' }}>
+          <button onClick={() => setShowMapControls(false)} style={{ padding: '4px 8px', borderRadius: 6, background: 'rgba(100, 100, 100, 0.7)', border: '1px solid rgba(160, 180, 220, 0.2)', color: '#fff', cursor: 'pointer', fontSize: 10 }}>✕</button>
+          <button onClick={toggleMapStyle} style={{ padding: '8px 12px', borderRadius: 8, background: mapStyle === 'satellite' ? 'rgba(180, 100, 120, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${mapStyle === 'satellite' ? 'rgba(180, 100, 120, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
+            {mapStyle === 'normal' ? '🛰️ 卫星' : '🗺️ 地图'}
+          </button>
+          <button onClick={toggle3D} style={{ padding: '8px 12px', borderRadius: 8, background: is3D ? 'rgba(100, 120, 200, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${is3D ? 'rgba(100, 120, 200, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
+            {is3D ? '📐 3D' : '📐 2D'}
+          </button>
+          <button onClick={() => setShowConnections(!showConnections)} style={{ padding: '8px 12px', borderRadius: 8, background: showConnections ? 'rgba(100, 180, 140, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showConnections ? 'rgba(100, 180, 140, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
+            🔗 连接线
+          </button>
+          <button onClick={() => setShowTimeline(!showTimeline)} style={{ padding: '8px 12px', borderRadius: 8, background: showTimeline ? 'rgba(200, 160, 100, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showTimeline ? 'rgba(200, 160, 100, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
+            📅 时间轴
+          </button>
+          <button onClick={() => setShowAchievements(!showAchievements)} style={{ padding: '8px 12px', borderRadius: 8, background: showAchievements ? 'rgba(180, 160, 220, 0.85)' : 'rgba(20, 30, 50, 0.85)', border: `1px solid ${showAchievements ? 'rgba(180, 160, 220, 0.5)' : 'rgba(160, 180, 220, 0.3)'}`, color: '#fff', cursor: 'pointer', fontSize: 11, letterSpacing: 1, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)', transition: 'all 0.3s ease' }}>
+            🏆 成就 ({unlockedAchievements.length}/{achievements.length})
+          </button>
+        </div>
+      )}
 
       {/* Filter Bar */}
-      <div style={{ position: 'absolute', top: 400, right: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'fadeInRight 0.6s ease-out 0.1s both', maxHeight: 'calc(100vh - 430px)', overflowY: 'auto' }}>
-        <button onClick={() => setFilterEmotion(null)} style={{ padding: '6px 10px', borderRadius: 999, background: filterEmotion === null ? 'rgba(160, 180, 220, 0.85)' : 'rgba(20, 30, 50, 0.7)', border: `1px solid ${filterEmotion === null ? 'rgba(160, 180, 220, 0.5)' : 'rgba(160, 180, 220, 0.2)'}`, color: '#fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1, backdropFilter: 'blur(10px)', transition: 'all 0.3s ease' }}>
-          全部 ({markers.length})
+      {!showFilters ? (
+        <button
+          onClick={() => setShowFilters(true)}
+          style={{ position: 'absolute', top: 400, right: 20, zIndex: 10, padding: '6px 10px', borderRadius: 999, background: 'rgba(20, 30, 50, 0.85)', border: '1px solid rgba(160, 180, 220, 0.3)', color: '#fff', cursor: 'pointer', fontSize: 11, backdropFilter: 'blur(15px)', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)' }}
+        >
+          🔽 筛选
         </button>
-        {(Object.keys(emotionConfig) as (keyof typeof emotionConfig)[]).map(key => (
-          <button key={key} onClick={() => setFilterEmotion(filterEmotion === key ? null : key)} style={{ padding: '6px 10px', borderRadius: 999, background: filterEmotion === key ? emotionConfig[key].bg : 'rgba(20, 30, 50, 0.7)', border: `1px solid ${filterEmotion === key ? emotionConfig[key].color : 'rgba(160, 180, 220, 0.2)'}`, color: '#fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1, backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', boxShadow: filterEmotion === key ? emotionConfig[key].shadow : 'none' }}>
-            {emotionConfig[key].icon} {stats[key] || 0}
+      ) : (
+        <div style={{ position: 'absolute', top: 400, right: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'fadeInRight 0.6s ease-out 0.1s both', maxHeight: 'calc(100vh - 430px)', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 10, color: '#a0a8b8', letterSpacing: 1 }}>筛选心情</span>
+            <button onClick={() => setShowFilters(false)} style={{ padding: '2px 6px', borderRadius: 6, background: 'rgba(100, 100, 100, 0.7)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 10 }}>✕</button>
+          </div>
+          <button onClick={() => setFilterEmotion(null)} style={{ padding: '6px 10px', borderRadius: 999, background: filterEmotion === null ? 'rgba(160, 180, 220, 0.85)' : 'rgba(20, 30, 50, 0.7)', border: `1px solid ${filterEmotion === null ? 'rgba(160, 180, 220, 0.5)' : 'rgba(160, 180, 220, 0.2)'}`, color: '#fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1, backdropFilter: 'blur(10px)', transition: 'all 0.3s ease' }}>
+            全部 ({markers.length})
           </button>
-        ))}
-      </div>
+          {(Object.keys(emotionConfig) as (keyof typeof emotionConfig)[]).map(key => (
+            <button key={key} onClick={() => setFilterEmotion(filterEmotion === key ? null : key)} style={{ padding: '6px 10px', borderRadius: 999, background: filterEmotion === key ? emotionConfig[key].bg : 'rgba(20, 30, 50, 0.7)', border: `1px solid ${filterEmotion === key ? emotionConfig[key].color : 'rgba(160, 180, 220, 0.2)'}`, color: '#fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1, backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', boxShadow: filterEmotion === key ? emotionConfig[key].shadow : 'none' }}>
+              {emotionConfig[key].icon} {stats[key] || 0}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Achievements Panel */}
       {showAchievements && (
