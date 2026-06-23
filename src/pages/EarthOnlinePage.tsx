@@ -530,7 +530,7 @@ export default function EarthOnlinePage() {
       </div>
 
       {/* Filter Bar */}
-      <div style={{ position: 'absolute', top: 240, left: 20, zIndex: 10, display: 'flex', flexWrap: 'wrap', gap: 6, animation: 'fadeInLeft 0.6s ease-out 0.1s both', maxWidth: 200 }}>
+      <div style={{ position: 'absolute', top: 100, right: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, animation: 'fadeInLeft 0.6s ease-out 0.1s both', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
         <button onClick={() => setFilterEmotion(null)} style={{ padding: '6px 10px', borderRadius: 999, background: filterEmotion === null ? 'rgba(160, 180, 220, 0.85)' : 'rgba(20, 30, 50, 0.7)', border: `1px solid ${filterEmotion === null ? 'rgba(160, 180, 220, 0.5)' : 'rgba(160, 180, 220, 0.2)'}`, color: '#fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1, backdropFilter: 'blur(10px)', transition: 'all 0.3s ease' }}>
           全部 ({markers.length})
         </button>
