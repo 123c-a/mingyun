@@ -152,9 +152,11 @@ export function MingliStarPanel() {
                 marginBottom: 4,
               }}>年</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.year}
-                onChange={(e) => setFormData(prev => ({ ...prev, year: Number(e.target.value) }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, year: Number(e.target.value) || 2000 }))}
                 style={{
                   width: '100%',
                   padding: 12,
@@ -175,11 +177,13 @@ export function MingliStarPanel() {
                 marginBottom: 4,
               }}>月</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.month}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  month: Math.min(12, Math.max(1, Number(e.target.value)))
+                  month: Math.min(12, Math.max(1, Number(e.target.value) || 1))
                 }))}
                 style={{
                   width: '100%',
@@ -201,11 +205,13 @@ export function MingliStarPanel() {
                 marginBottom: 4,
               }}>日</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.day}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  day: Math.min(31, Math.max(1, Number(e.target.value)))
+                  day: Math.min(31, Math.max(1, Number(e.target.value) || 1))
                 }))}
                 style={{
                   width: '100%',
@@ -227,11 +233,13 @@ export function MingliStarPanel() {
                 marginBottom: 4,
               }}>时</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.hour}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
-                  hour: Math.min(23, Math.max(0, Number(e.target.value)))
+                  hour: Math.min(23, Math.max(0, Number(e.target.value) || 0))
                 }))}
                 style={{
                   width: '100%',
