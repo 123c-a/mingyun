@@ -12,7 +12,12 @@ export default function NumerologyPage() {
   const seed = useMemo(() => stringToSeed(validPlanets.sort().join('-')), [validPlanets])
   const existingConfig = getComboConfig(validPlanets)
   const comboInfo = useMemo(() => existingConfig ? { name: existingConfig.name } : { name: generateComboName(validPlanets, seed).name }, [validPlanets, seed, existingConfig])
-  const theme = useMemo(() => existingConfig ? { primary: existingConfig.primaryColor, secondary: existingConfig.secondaryColor, glowColor: `${existingConfig.primaryColor}40` } : generateThemeColors(validPlanets, planetColors, seed), [validPlanets, seed, existingConfig])
+  const theme = useMemo(() => {
+    if (existingConfig) {
+      return { primary: existingConfig.primaryColor, secondary: existingConfig.secondaryColor, glowColor: `${existingConfig.primaryColor}40`, borderColor: `${existingConfig.primaryColor}30` }
+    }
+    return generateThemeColors(validPlanets, planetColors, seed)
+  }, [validPlanets, seed, existingConfig])
 
   const generate = () => {
     const today = new Date()

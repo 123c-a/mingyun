@@ -728,11 +728,11 @@ function Sun({ onComposerRingClick, selectedPlanets }: { onComposerRingClick: ()
       onPointerOut={() => { if (!composerHovered) { setHovered(false); document.body.style.cursor = 'auto' } }}
     >
       <mesh ref={meshRef}><sphereGeometry args={[3.8, 48, 48]} /><meshBasicMaterial map={sunTex} /></mesh>
-      {/* 光环 pointerEvents={false} 让点击穿透 */}
-      <mesh ref={glow1Ref} scale={1.18} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffd880" transparent opacity={0.5} depthWrite={false} /></mesh>
-      <mesh ref={glow2Ref} scale={1.45} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffa840" transparent opacity={0.25} depthWrite={false} /></mesh>
-      <mesh ref={glow3Ref} scale={1.75} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff7020" transparent opacity={0.12} depthWrite={false} /></mesh>
-      <mesh ref={coronaRef} scale={2.1} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff4010" transparent opacity={0.06} depthWrite={false} side={THREE.BackSide} /></mesh>
+      {/* 光环 — 让点击穿透 */}
+      <mesh ref={glow1Ref} scale={1.18}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffd880" transparent opacity={0.5} depthWrite={false} /></mesh>
+      <mesh ref={glow2Ref} scale={1.45}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffa840" transparent opacity={0.25} depthWrite={false} /></mesh>
+      <mesh ref={glow3Ref} scale={1.75}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff7020" transparent opacity={0.12} depthWrite={false} /></mesh>
+      <mesh ref={coronaRef} scale={2.1}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff4010" transparent opacity={0.06} depthWrite={false} side={THREE.BackSide} /></mesh>
       <pointLight color="#ffd880" intensity={3.2} distance={160} decay={1.0} />
 
       {/* 组合实验室轨道环 — 放在最外层 */}
@@ -751,7 +751,6 @@ function Sun({ onComposerRingClick, selectedPlanets }: { onComposerRingClick: ()
         <mesh
           ref={composerRingRef}
           rotation={[Math.PI / 2, 0, 0]}
-          pointerEvents={false}
         >
           <torusGeometry args={[COMPOSER_RADIUS, 0.12, 8, 120]} />
           <meshStandardMaterial
@@ -785,7 +784,6 @@ function Sun({ onComposerRingClick, selectedPlanets }: { onComposerRingClick: ()
             key={'glow' + i}
             position={[Math.cos(angle) * COMPOSER_RADIUS, 0, Math.sin(angle) * COMPOSER_RADIUS]}
             scale={composerHovered ? 1.8 : 1.4}
-            pointerEvents={false}
           >
             <sphereGeometry args={[0.45, 16, 16]} />
             <meshBasicMaterial

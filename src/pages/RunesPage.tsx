@@ -12,7 +12,12 @@ export default function RunesPage() {
   const seed = useMemo(() => stringToSeed(validPlanets.sort().join('-')), [validPlanets])
   const existingConfig = getComboConfig(validPlanets)
   const comboInfo = useMemo(() => existingConfig ? { name: existingConfig.name } : { name: generateComboName(validPlanets, seed).name }, [validPlanets, seed, existingConfig])
-  const theme = useMemo(() => existingConfig ? { primary: existingConfig.primaryColor, secondary: existingConfig.secondaryColor, glowColor: `${existingConfig.primaryColor}40`, borderColor: `${existingConfig.primaryColor}30` } : generateThemeColors(validPlanets, planetColors, seed), [validPlanets, seed, existingConfig])
+  const theme = useMemo(() => {
+    if (existingConfig) {
+      return { primary: existingConfig.primaryColor, secondary: existingConfig.secondaryColor, glowColor: `${existingConfig.primaryColor}40`, borderColor: `${existingConfig.primaryColor}30`, cardBg: `linear-gradient(135deg, ${existingConfig.primaryColor}08 0%, ${existingConfig.secondaryColor}08 100%)` }
+    }
+    return generateThemeColors(validPlanets, planetColors, seed)
+  }, [validPlanets, seed, existingConfig])
 
   const draw = () => setDrawnRunes(drawRunes(seed + Date.now(), 3))
 

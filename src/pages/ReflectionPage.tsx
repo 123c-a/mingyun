@@ -7,7 +7,6 @@ import {
   generateComboName,
   generateThemeColors,
   generatePromptCard,
-  mirrorQuestions,
 } from '../lib/comboGenerator'
 
 export default function ReflectionPage() {
