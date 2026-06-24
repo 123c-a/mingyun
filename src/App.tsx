@@ -69,12 +69,17 @@ import EnergyCleansePage from './pages/EnergyCleansePage'
 import RainbowBridgePage from './pages/RainbowBridgePage'
 import CosmicLetterPage from './pages/CosmicLetterPage'
 import SelfLovePage from './pages/SelfLovePage'
+import AgentPage from './pages/AgentPage'
+import FloatingOrb from './components/agent/FloatingOrb'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<GalaxyNav />} />
-      <Route path="/observatory" element={<ObservatoryPage />} />
+    <>
+      <FloatingOrb />
+      <Routes>
+        <Route path="/" element={<GalaxyNav />} />
+        <Route path="/agent" element={<AgentPage />} />
+        <Route path="/observatory" element={<ObservatoryPage />} />
       <Route path="/universe" element={<UniversePage />} />
       <Route path="/timeline" element={<TimelinePage />} />
       <Route path="/explorer" element={<ExplorerPage />} />
@@ -121,5 +126,6 @@ export default function App() {
       {/* 404 */}
       <Route path="*" element={<ComboNotFoundPage />} />
     </Routes>
+    </>
   )
 }
