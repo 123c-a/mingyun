@@ -396,18 +396,18 @@ export default function AgentPage() {
                         </div>
                         <input
                           type="range"
-                          min="0.5"
-                          max="2"
+                          min="0.8"
+                          max="2.0"
                           step="0.1"
                           value={voiceSettings.pitch}
                           onChange={(e) => setVoiceSettings({ pitch: parseFloat(e.target.value) })}
                           className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.pitch - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.pitch - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) 100%)` }}
+                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.pitch - 0.8) / 1.2) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.pitch - 0.8) / 1.2) * 100}%, rgba(255,255,255,0.2) 100%)` }}
                         />
                         <div className="flex justify-between text-[10px] opacity-40 mt-1">
-                          <span>低沉</span>
-                          <span>少女音</span>
-                          <span>高亢</span>
+                          <span>温柔</span>
+                          <span>甜美</span>
+                          <span>清脆</span>
                         </div>
                       </div>
 
@@ -418,18 +418,18 @@ export default function AgentPage() {
                         </div>
                         <input
                           type="range"
-                          min="0.5"
-                          max="2"
+                          min="0.7"
+                          max="1.3"
                           step="0.05"
                           value={voiceSettings.rate}
                           onChange={(e) => setVoiceSettings({ rate: parseFloat(e.target.value) })}
                           className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.rate - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.rate - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) 100%)` }}
+                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.rate - 0.7) / 0.6) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.rate - 0.7) / 0.6) * 100}%, rgba(255,255,255,0.2) 100%)` }}
                         />
                         <div className="flex justify-between text-[10px] opacity-40 mt-1">
-                          <span>慢</span>
-                          <span>正常</span>
-                          <span>快</span>
+                          <span>舒缓</span>
+                          <span>自然</span>
+                          <span>轻快</span>
                         </div>
                       </div>
 
@@ -453,7 +453,7 @@ export default function AgentPage() {
                       <button
                         onClick={() => {
                           if (voiceSettings.enabled) {
-                            speakText('你好呀，我是星灵，你的宇宙向导 ✨', voiceSettings)
+                            speakText('嗨～我是星灵呀，很高兴认识你 ✨ 有什么想聊的吗', voiceSettings)
                           }
                         }}
                         disabled={!voiceSettings.enabled}
@@ -464,7 +464,7 @@ export default function AgentPage() {
                           color: levelColor,
                         }}
                       >
-                        🔊 试听一下
+                        🔊 听一下效果
                       </button>
                     </div>
                   </div>

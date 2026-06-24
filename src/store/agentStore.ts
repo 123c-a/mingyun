@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { VoiceSettings } from '../utils/speechService'
-import { DEFAULT_VOICE_SETTINGS } from '../utils/speechService'
 
 export type AgentMessage = {
   id: string
@@ -74,7 +73,13 @@ export const useAgentStore = create<AgentState & AgentActions>()(
       totalInteractions: 0,
       lastActive: Date.now(),
       greetingShown: false,
-      voiceSettings: DEFAULT_VOICE_SETTINGS,
+      voiceSettings: {
+        rate: 0.95,
+        pitch: 1.5,
+        volume: 0.9,
+        enabled: true,
+        naturalMode: true,
+      },
       autoPlayVoice: false,
 
       toggleOrb: () => set((s) => ({ orbOpen: !s.orbOpen })),
