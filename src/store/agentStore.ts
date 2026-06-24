@@ -74,13 +74,12 @@ export const useAgentStore = create<AgentState & AgentActions>()(
       lastActive: Date.now(),
       greetingShown: false,
       voiceSettings: {
-        rate: 0.95,
-        pitch: 1.5,
-        volume: 0.9,
+        rate: 1.05,
+        pitch: 1.4,
+        volume: 0.95,
         enabled: true,
-        naturalMode: true,
       },
-      autoPlayVoice: false,
+      autoPlayVoice: true,
 
       toggleOrb: () => set((s) => ({ orbOpen: !s.orbOpen })),
       setOrbOpen: (open) => set({ orbOpen: open }),

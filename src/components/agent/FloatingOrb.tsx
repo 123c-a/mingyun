@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAgentStore, LEVEL_NAMES, LEVEL_COLORS } from '../../store/agentStore'
 import { chatWithStarSpirit, recordToPlanet, getStarGreeting } from '../../utils/agentService'
-import { speak, stopSpeaking, isSpeechSupported, initVoices } from '../../utils/speechService'
+import { speak, stopSpeaking, initVoices } from '../../utils/speechService'
 
 export default function FloatingOrb() {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function FloatingOrb() {
     setGreetingShown,
     voiceSettings,
     toggleVoiceEnabled,
+    autoPlayVoice,
   } = useAgentStore()
 
   const [input, setInput] = useState('')
@@ -26,18 +27,17 @@ export default function FloatingOrb() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [speakingId, setSpeakingId] = useState<string | null>(null)
-  const [speechReady, setSpeechReady] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const orbRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    initVoices(() => setSpeechReady(true))
-    setTimeout(() => setSpeechReady(true), 1000)
+    initVoices()
   }, [])
 
   const playSpeech = useCallback((text: string, msgId: string) => {
     if (!voiceSettings.enabled) return
+    stopSpeaking()
     setSpeakingId(msgId)
     speak(text, voiceSettings, () => setSpeakingId(null), () => setSpeakingId(msgId))
   }, [voiceSettings])
@@ -50,6 +50,21 @@ export default function FloatingOrb() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // 自动播放新消息
+  const prevMessagesLength = useRef(messages.length)
+  useEffect(() => {
+    if (!autoPlayVoice || !voiceSettings.enabled) return
+    if (messages.length > prevMessagesLength.current) {
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg.role === 'assistant') {
+        setTimeout(() => {
+          playSpeech(lastMsg.content, lastMsg.id)
+        }, 300) // 等待消息渲染完成后播放
+      }
+    }
+    prevMessagesLength.current = messages.length
+  }, [messages, autoPlayVoice, voiceSettings.enabled, playSpeech])
 
   useEffect(() => {
     if (!greetingShown && messages.length === 0) {

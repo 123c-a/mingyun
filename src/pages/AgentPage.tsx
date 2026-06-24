@@ -64,6 +64,21 @@ export default function AgentPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, activeTab])
 
+  // 自动播放新消息
+  const prevMessagesLength = useRef(messages.length)
+  useEffect(() => {
+    if (!autoPlayVoice || !voiceSettings.enabled) return
+    if (messages.length > prevMessagesLength.current) {
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg.role === 'assistant') {
+        setTimeout(() => {
+          playSpeech(lastMsg.content, lastMsg.id)
+        }, 300)
+      }
+    }
+    prevMessagesLength.current = messages.length
+  }, [messages, autoPlayVoice, voiceSettings.enabled, playSpeech])
+
   useEffect(() => {
     if (!greetingShown && messages.length === 0) {
       const greeting = getStarGreeting()
