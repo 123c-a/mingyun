@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Scene3DBackground from '../components/Scene3DBackground'
 import { useAgentStore, LEVEL_NAMES, LEVEL_COLORS } from '../store/agentStore'
@@ -15,6 +15,7 @@ import {
   generateWeeklyReport,
   getTodayInsights,
 } from '../utils/agentService'
+import { speak as speakText, stopSpeaking, initVoices } from '../utils/speechService'
 
 export default function AgentPage() {
   const navigate = useNavigate()
@@ -26,6 +27,11 @@ export default function AgentPage() {
     totalInteractions,
     greetingShown,
     setGreetingShown,
+    voiceSettings,
+    setVoiceSettings,
+    toggleVoiceEnabled,
+    autoPlayVoice,
+    toggleAutoPlayVoice,
   } = useAgentStore()
 
   const cosmicStore = useCosmicStore()
@@ -34,8 +40,25 @@ export default function AgentPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'chat' | 'memory' | 'tasks' | 'analytics'>('overview')
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    initVoices()
+  }, [])
+
+  const playSpeech = useCallback((text: string, msgId: string) => {
+    if (!voiceSettings.enabled) return
+    stopSpeaking()
+    setSpeakingId(msgId)
+    speakText(text, voiceSettings, () => setSpeakingId(null), () => setSpeakingId(msgId))
+  }, [voiceSettings])
+
+  const handleStopSpeech = useCallback(() => {
+    stopSpeaking()
+    setSpeakingId(null)
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -350,6 +373,101 @@ export default function AgentPage() {
                       ))}
                     </div>
                   </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-light opacity-80">🎙️ 语音设置</h3>
+                      <button
+                        onClick={toggleVoiceEnabled}
+                        className={`text-xs px-3 py-1 rounded-full transition-colors ${voiceSettings.enabled ? '' : 'opacity-50'}`}
+                        style={{
+                          color: levelColor,
+                          background: voiceSettings.enabled ? `${levelColor}20` : 'rgba(255,255,255,0.05)',
+                        }}
+                      >
+                        {voiceSettings.enabled ? '已开启' : '已关闭'}
+                      </button>
+                    </div>
+                    <div className="rounded-2xl p-4 space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="opacity-60">音调</span>
+                          <span style={{ color: levelColor }}>{voiceSettings.pitch.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.1"
+                          value={voiceSettings.pitch}
+                          onChange={(e) => setVoiceSettings({ pitch: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.pitch - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.pitch - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) 100%)` }}
+                        />
+                        <div className="flex justify-between text-[10px] opacity-40 mt-1">
+                          <span>低沉</span>
+                          <span>少女音</span>
+                          <span>高亢</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="opacity-60">语速</span>
+                          <span style={{ color: levelColor }}>{voiceSettings.rate.toFixed(2)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.05"
+                          value={voiceSettings.rate}
+                          onChange={(e) => setVoiceSettings({ rate: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.rate - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.rate - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.2) 100%)` }}
+                        />
+                        <div className="flex justify-between text-[10px] opacity-40 mt-1">
+                          <span>慢</span>
+                          <span>正常</span>
+                          <span>快</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="opacity-60">音量</span>
+                          <span style={{ color: levelColor }}>{Math.round(voiceSettings.volume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1"
+                          step="0.1"
+                          value={voiceSettings.volume}
+                          onChange={(e) => setVoiceSettings({ volume: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                          style={{ background: `linear-gradient(to right, ${levelColor} 0%, ${levelColor} ${((voiceSettings.volume - 0.1) / 0.9) * 100}%, rgba(255,255,255,0.2) ${((voiceSettings.volume - 0.1) / 0.9) * 100}%, rgba(255,255,255,0.2) 100%)` }}
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (voiceSettings.enabled) {
+                            speakText('你好呀，我是星灵，你的宇宙向导 ✨', voiceSettings)
+                          }
+                        }}
+                        disabled={!voiceSettings.enabled}
+                        className="w-full py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40"
+                        style={{
+                          background: `linear-gradient(135deg, ${levelColor}40, ${levelColor}20)`,
+                          border: `1px solid ${levelColor}40`,
+                          color: levelColor,
+                        }}
+                      >
+                        🔊 试听一下
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -362,23 +480,39 @@ export default function AgentPage() {
                         key={msg.id}
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div
-                          className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
-                          style={{
-                            background:
-                              msg.role === 'user'
-                                ? `linear-gradient(135deg, ${levelColor}40, ${levelColor}20)`
-                                : 'rgba(30, 27, 50, 0.9)',
-                            border:
-                              msg.role === 'user'
-                                ? `1px solid ${levelColor}40`
-                                : '1px solid rgba(255,255,255,0.08)',
-                            color: '#e2e8f0',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {msg.content}
+                        <div className="max-w-[80%]">
+                          <div
+                            className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+                            style={{
+                              background:
+                                msg.role === 'user'
+                                  ? `linear-gradient(135deg, ${levelColor}40, ${levelColor}20)`
+                                  : 'rgba(30, 27, 50, 0.9)',
+                              border:
+                                msg.role === 'user'
+                                  ? `1px solid ${levelColor}40`
+                                  : `1px solid ${speakingId === msg.id ? levelColor + '60' : 'rgba(255,255,255,0.08)'}`,
+                              color: '#e2e8f0',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {msg.content}
+                          </div>
+                          {msg.role === 'assistant' && voiceSettings.enabled && (
+                            <div className="mt-1.5 flex gap-2">
+                              <button
+                                onClick={() => speakingId === msg.id ? handleStopSpeech() : playSpeech(msg.content, msg.id)}
+                                className="text-xs px-2.5 py-1 rounded-full transition-colors hover:opacity-80"
+                                style={{
+                                  color: speakingId === msg.id ? levelColor : 'rgba(255,255,255,0.5)',
+                                  background: speakingId === msg.id ? `${levelColor}15` : 'rgba(255,255,255,0.05)',
+                                }}
+                              >
+                                {speakingId === msg.id ? '⏹ 停止朗读' : '🔊 朗读'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

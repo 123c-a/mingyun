@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAgentStore, LEVEL_NAMES, LEVEL_COLORS } from '../../store/agentStore'
 import { chatWithStarSpirit, recordToPlanet, getStarGreeting } from '../../utils/agentService'
+import { speak, stopSpeaking, isSpeechSupported, initVoices } from '../../utils/speechService'
 
 export default function FloatingOrb() {
   const navigate = useNavigate()
@@ -16,15 +17,35 @@ export default function FloatingOrb() {
     setOrbPosition,
     greetingShown,
     setGreetingShown,
+    voiceSettings,
+    toggleVoiceEnabled,
   } = useAgentStore()
 
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
+  const [speechReady, setSpeechReady] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const orbRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    initVoices(() => setSpeechReady(true))
+    setTimeout(() => setSpeechReady(true), 1000)
+  }, [])
+
+  const playSpeech = useCallback((text: string, msgId: string) => {
+    if (!voiceSettings.enabled) return
+    setSpeakingId(msgId)
+    speak(text, voiceSettings, () => setSpeakingId(null), () => setSpeakingId(msgId))
+  }, [voiceSettings])
+
+  const stopSpeech = useCallback(() => {
+    stopSpeaking()
+    setSpeakingId(null)
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -201,6 +222,14 @@ export default function FloatingOrb() {
               </div>
             </div>
             <button
+              onClick={toggleVoiceEnabled}
+              className={`text-xs px-2 py-1 rounded-lg transition-colors ${voiceSettings.enabled ? '' : 'opacity-50'}`}
+              style={{ color: levelColor, background: `${levelColor}15` }}
+              title={voiceSettings.enabled ? '关闭语音' : '开启语音'}
+            >
+              {voiceSettings.enabled ? '🔊' : '🔇'}
+            </button>
+            <button
               onClick={() => navigate('/agent')}
               className="text-xs px-2 py-1 rounded-lg transition-colors"
               style={{ color: levelColor, background: `${levelColor}15` }}
@@ -222,23 +251,39 @@ export default function FloatingOrb() {
                 key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className="max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed"
-                  style={{
-                    background:
-                      msg.role === 'user'
-                        ? `linear-gradient(135deg, ${levelColor}40, ${levelColor}20)`
-                        : 'rgba(30, 27, 50, 0.9)',
-                    border:
-                      msg.role === 'user'
-                        ? `1px solid ${levelColor}40`
-                        : '1px solid rgba(255,255,255,0.08)',
-                    color: '#e2e8f0',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {msg.content}
+                <div className="max-w-[85%]">
+                  <div
+                    className="rounded-2xl px-3 py-2 text-sm leading-relaxed"
+                    style={{
+                      background:
+                        msg.role === 'user'
+                          ? `linear-gradient(135deg, ${levelColor}40, ${levelColor}20)`
+                          : 'rgba(30, 27, 50, 0.9)',
+                      border:
+                        msg.role === 'user'
+                          ? `1px solid ${levelColor}40`
+                          : `1px solid ${speakingId === msg.id ? levelColor + '60' : 'rgba(255,255,255,0.08)'}`,
+                      color: '#e2e8f0',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.role === 'assistant' && voiceSettings.enabled && (
+                    <div className="mt-1 flex gap-1">
+                      <button
+                        onClick={() => speakingId === msg.id ? stopSpeech() : playSpeech(msg.content, msg.id)}
+                        className="text-[10px] px-2 py-0.5 rounded-full transition-colors hover:opacity-80"
+                        style={{
+                          color: speakingId === msg.id ? levelColor : 'rgba(255,255,255,0.4)',
+                          background: speakingId === msg.id ? `${levelColor}15` : 'transparent',
+                        }}
+                      >
+                        {speakingId === msg.id ? '⏹ 停止' : '🔊 播放'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

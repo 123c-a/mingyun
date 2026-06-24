@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { VoiceSettings } from '../utils/speechService'
+import { DEFAULT_VOICE_SETTINGS } from '../utils/speechService'
 
 export type AgentMessage = {
   id: string
@@ -24,6 +26,8 @@ export type AgentState = {
   totalInteractions: number
   lastActive: number
   greetingShown: boolean
+  voiceSettings: VoiceSettings
+  autoPlayVoice: boolean
 }
 
 export type AgentActions = {
@@ -37,6 +41,9 @@ export type AgentActions = {
   addExp: (amount: number) => void
   incrementInteractions: () => void
   setGreetingShown: (shown: boolean) => void
+  setVoiceSettings: (settings: Partial<VoiceSettings>) => void
+  toggleAutoPlayVoice: () => void
+  toggleVoiceEnabled: () => void
 }
 
 const LEVEL_EXP = {
@@ -67,6 +74,8 @@ export const useAgentStore = create<AgentState & AgentActions>()(
       totalInteractions: 0,
       lastActive: Date.now(),
       greetingShown: false,
+      voiceSettings: DEFAULT_VOICE_SETTINGS,
+      autoPlayVoice: false,
 
       toggleOrb: () => set((s) => ({ orbOpen: !s.orbOpen })),
       setOrbOpen: (open) => set({ orbOpen: open }),
@@ -104,6 +113,22 @@ export const useAgentStore = create<AgentState & AgentActions>()(
         })),
 
       setGreetingShown: (shown) => set({ greetingShown: shown }),
+
+      setVoiceSettings: (settings) =>
+        set((s) => ({
+          voiceSettings: { ...s.voiceSettings, ...settings },
+        })),
+
+      toggleAutoPlayVoice: () =>
+        set((s) => ({ autoPlayVoice: !s.autoPlayVoice })),
+
+      toggleVoiceEnabled: () =>
+        set((s) => ({
+          voiceSettings: {
+            ...s.voiceSettings,
+            enabled: !s.voiceSettings.enabled,
+          },
+        })),
     }),
     {
       name: 'star-agent-store',
@@ -114,6 +139,8 @@ export const useAgentStore = create<AgentState & AgentActions>()(
         totalInteractions: s.totalInteractions,
         orbPosition: s.orbPosition,
         greetingShown: s.greetingShown,
+        voiceSettings: s.voiceSettings,
+        autoPlayVoice: s.autoPlayVoice,
       }),
     }
   )
