@@ -3,7 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import Scene3DBackground from '../components/Scene3DBackground'
 import { useAgentStore, LEVEL_NAMES, LEVEL_COLORS } from '../store/agentStore'
 import { useCosmicStore, PlanetId, PLANET_META } from '../store/cosmicStore'
-import { chatWithStarSpirit, recordToPlanet, getStarGreeting } from '../utils/agentService'
+import { useMemoryStore } from '../store/memoryStore'
+import { useTaskStore } from '../store/taskStore'
+import {
+  chatWithStarSpirit,
+  recordToPlanet,
+  getStarGreeting,
+  getMoodTrend,
+  getPlanetActivity,
+  detectPatterns,
+  generateWeeklyReport,
+  getTodayInsights,
+} from '../utils/agentService'
 
 export default function AgentPage() {
   const navigate = useNavigate()
@@ -18,9 +29,11 @@ export default function AgentPage() {
   } = useAgentStore()
 
   const cosmicStore = useCosmicStore()
+  const memoryStore = useMemoryStore()
+  const taskStore = useTaskStore()
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'chat' | 'overview' | 'quests'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'chat' | 'memory' | 'tasks' | 'analytics'>('overview')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -98,11 +111,18 @@ export default function AgentPage() {
   }
 
   const quickQuestions = [
-    '我有多少条思绪？',
+    '今日洞察',
+    '情绪趋势怎么样？',
+    '本周总结',
     '推荐我做什么？',
-    '带我去水星',
-    '我最近情绪怎么样？',
   ]
+
+  // 新增数据
+  const taskStats = useMemo(() => taskStore.getStats(), [taskStore])
+  const memories = useMemo(() => memoryStore.getRecentMemories(10), [memoryStore])
+  const moodData = useMemo(() => getMoodTrend(7), [])
+  const patterns = useMemo(() => detectPatterns(), [])
+  const weeklyReport = useMemo(() => generateWeeklyReport(), [])
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
@@ -235,16 +255,18 @@ export default function AgentPage() {
               style={{ height: 600 }}
             >
               {/* Tab切换 */}
-              <div className="flex-shrink-0 flex border-b border-white/10">
+              <div className="flex-shrink-0 flex border-b border-white/10 overflow-x-auto">
                 {[
-                  { id: 'overview', label: '总览' },
-                  { id: 'chat', label: '对话' },
-                  { id: 'quests', label: '任务' },
+                  { id: 'overview', label: '总览', icon: '🌟' },
+                  { id: 'chat', label: '对话', icon: '💬' },
+                  { id: 'memory', label: '记忆', icon: '🧠' },
+                  { id: 'tasks', label: '任务', icon: '📋' },
+                  { id: 'analytics', label: '分析', icon: '📊' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex-1 py-3 text-sm transition-colors ${
+                    className={`flex-1 py-3 text-xs transition-colors whitespace-nowrap ${
                       activeTab === tab.id ? '' : 'opacity-50 hover:opacity-80'
                     }`}
                     style={
@@ -253,7 +275,7 @@ export default function AgentPage() {
                         : {}
                     }
                   >
-                    {tab.label}
+                    {tab.icon} {tab.label}
                   </button>
                 ))}
               </div>
@@ -446,82 +468,247 @@ export default function AgentPage() {
                 </>
               )}
 
-              {/* 任务Tab */}
-              {activeTab === 'quests' && (
+              {/* 记忆Tab */}
+              {activeTab === 'memory' && (
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  <h3 className="text-lg font-light mb-4" style={{ color: levelColor }}>
-                    🎯 星际任务
-                  </h3>
-                  {[
-                    {
-                      title: '初入星河',
-                      desc: '在第一颗行星留下记录',
-                      completed: totalEntries > 0,
-                      reward: 10,
-                    },
-                    {
-                      title: '九星连线',
-                      desc: '探索所有9颗行星',
-                      completed: planetStats.filter((p) => p.count > 0).length >= 9,
-                      reward: 50,
-                    },
-                    {
-                      title: '思绪收藏家',
-                      desc: '在水星记录10条思绪',
-                      completed: cosmicStore.mercury.length >= 10,
-                      reward: 20,
-                    },
-                    {
-                      title: '情绪炼金师',
-                      desc: '在火星完成5次情绪炼金',
-                      completed: cosmicStore.mars.length >= 5,
-                      reward: 20,
-                    },
-                    {
-                      title: '梦的翻译者',
-                      desc: '在海王星记录3个梦',
-                      completed: cosmicStore.neptune.length >= 3,
-                      reward: 15,
-                    },
-                    {
-                      title: '宇宙大炼金',
-                      desc: '完成一次跨行星组合',
-                      completed: totalInteractions > 5,
-                      reward: 30,
-                    },
-                  ].map((quest, i) => (
-                    <div
-                      key={i}
-                      className="rounded-2xl p-4 flex items-center gap-4"
-                      style={{
-                        background: quest.completed ? `${levelColor}10` : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${quest.completed ? levelColor + '40' : 'rgba(255,255,255,0.1)'}`,
-                      }}
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-light" style={{ color: levelColor }}>
+                      🧠 记忆宫殿
+                    </h3>
+                    <span className="text-xs opacity-50">{memories.length} 条记忆</span>
+                  </div>
+                  
+                  {memories.length === 0 ? (
+                    <div className="text-center py-12 opacity-60">
+                      <div className="text-4xl mb-4">🌌</div>
+                      <p className="text-sm">记忆宫殿还是空的</p>
+                      <p className="text-xs mt-2">和星灵聊聊，我会记住重要的事</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {memories.map((mem) => {
+                        const typeColors: Record<string, string> = {
+                          person: '#f472b6', goal: '#60a5fa', concern: '#fbbf24',
+                          habit: '#a78bfa', preference: '#34d399', event: '#f87171', insight: '#fbbf24'
+                        }
+                        const typeNames: Record<string, string> = {
+                          person: '人物', goal: '目标', concern: '担忧', habit: '习惯', preference: '偏好', event: '事件', insight: '洞察'
+                        }
+                        return (
+                          <div
+                            key={mem.id}
+                            className="rounded-xl p-4"
+                            style={{
+                              background: `${typeColors[mem.type]}10`,
+                              border: `1px solid ${typeColors[mem.type]}30`,
+                            }}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full"
+                                style={{ background: `${typeColors[mem.type]}20`, color: typeColors[mem.type] }}
+                              >
+                                {typeNames[mem.type]}
+                              </span>
+                              <span className="text-xs opacity-50">
+                                被提及 {mem.referenceCount} 次
+                              </span>
+                            </div>
+                            <p className="text-sm">{mem.content}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 任务Tab */}
+              {activeTab === 'tasks' && (
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-light" style={{ color: levelColor }}>
+                      📋 任务中心
+                    </h3>
+                    <button
+                      onClick={() => taskStore.generateDailyTasks()}
+                      className="text-xs px-3 py-1 rounded-full"
+                      style={{ background: `${levelColor}20`, color: levelColor }}
                     >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                        style={{
-                          background: quest.completed ? `${levelColor}30` : 'rgba(255,255,255,0.05)',
-                          color: quest.completed ? levelColor : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {quest.completed ? '✓' : i + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">{quest.title}</div>
-                        <div className="text-xs opacity-60">{quest.desc}</div>
-                      </div>
-                      <div
-                        className="text-xs flex-shrink-0 px-2 py-1 rounded-full"
-                        style={{
-                          color: quest.completed ? levelColor : 'rgba(255,255,255,0.4)',
-                          background: quest.completed ? `${levelColor}15` : 'rgba(255,255,255,0.05)',
-                        }}
-                      >
-                        +{quest.reward} ⭐
+                      重置今日任务
+                    </button>
+                  </div>
+
+                  {/* 统计卡片 */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="rounded-xl p-3 text-center" style={{ background: `${levelColor}10` }}>
+                      <div className="text-xl font-light" style={{ color: levelColor }}>{taskStats.todayCompleted}/{taskStats.todayTotal}</div>
+                      <div className="text-[10px] opacity-60">今日</div>
+                    </div>
+                    <div className="rounded-xl p-3 text-center" style={{ background: `${levelColor}10` }}>
+                      <div className="text-xl font-light" style={{ color: levelColor }}>{taskStats.weekCompleted}</div>
+                      <div className="text-[10px] opacity-60">本周</div>
+                    </div>
+                    <div className="rounded-xl p-3 text-center" style={{ background: `${levelColor}10` }}>
+                      <div className="text-xl font-light" style={{ color: levelColor }}>{taskStats.longestStreak}</div>
+                      <div className="text-[10px] opacity-60">连续天</div>
+                    </div>
+                    <div className="rounded-xl p-3 text-center" style={{ background: `${levelColor}10` }}>
+                      <div className="text-xl font-light" style={{ color: levelColor }}>{taskStats.activeGoals}</div>
+                      <div className="text-[10px] opacity-60">进行中</div>
+                    </div>
+                  </div>
+
+                  {/* 每日任务 */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 opacity-80">✨ 今日任务</h4>
+                    <div className="space-y-2">
+                      {taskStore.getTodayTasks().map((task) => (
+                        <button
+                          key={task.id}
+                          onClick={() => taskStore.toggleDailyTask(task.id)}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+                          style={{
+                            background: task.completed ? `${levelColor}10` : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${task.completed ? levelColor + '40' : 'rgba(255,255,255,0.1)'}`,
+                          }}
+                        >
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                            style={{
+                              background: task.completed ? levelColor : 'transparent',
+                              border: `2px solid ${task.completed ? levelColor : 'rgba(255,255,255,0.3)'}`,
+                              color: task.completed ? '#000' : 'transparent',
+                            }}
+                          >
+                            {task.completed ? '✓' : ''}
+                          </div>
+                          <span className={task.completed ? 'opacity-50 line-through' : ''}>
+                            {task.emoji} {task.title}
+                          </span>
+                        </button>
+                      ))}
+                      {taskStore.getTodayTasks().length === 0 && (
+                        <p className="text-xs opacity-50 text-center py-4">点击上方按钮生成今日任务</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 进行中的目标 */}
+                  {taskStore.goals.filter((g) => g.progress < 100).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3 opacity-80">🎯 进行中的目标</h4>
+                      <div className="space-y-3">
+                        {taskStore.goals.filter((g) => g.progress < 100).map((goal) => (
+                          <div key={goal.id} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm">{goal.title}</span>
+                              <span className="text-xs" style={{ color: levelColor }}>{goal.progress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${goal.progress}%`, background: levelColor }}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </div>
+              )}
+
+              {/* 分析Tab */}
+              {activeTab === 'analytics' && (
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <h3 className="text-lg font-light mb-4" style={{ color: levelColor }}>
+                    📊 数据分析
+                  </h3>
+
+                  {/* 情绪趋势 */}
+                  <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <h4 className="text-sm font-medium mb-3 opacity-80">💭 情绪趋势（7天）</h4>
+                    <div className="flex items-end gap-1 h-20">
+                      {moodData.map((day, i) => {
+                        const maxVal = Math.max(...moodData.map((d) => d.value), 1)
+                        const height = day.value > 0 ? (day.value / maxVal) * 100 : 10
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <div
+                              className="w-full rounded-t-lg transition-all"
+                              style={{
+                                height: `${height}%`,
+                                background: day.value > 0 ? `linear-gradient(to top, ${levelColor}80, ${levelColor}40)` : 'rgba(255,255,255,0.1)',
+                                minHeight: day.value > 0 ? 4 : 4,
+                              }}
+                            />
+                            <span className="text-[9px] opacity-50">{day.label}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 发现模式 */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 opacity-80">🔮 发现的模式</h4>
+                    {patterns.length === 0 ? (
+                      <div className="rounded-xl p-4 text-center opacity-60" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        <p className="text-sm">记录更多数据，星灵会发现你的模式</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {patterns.map((pattern, i) => {
+                          const typeColors: Record<string, string> = {
+                            recurring: '#60a5fa', growth: '#34d399', concern: '#fbbf24', achievement: '#f472b6'
+                          }
+                          return (
+                            <div key={i} className="rounded-xl p-4" style={{ background: `${typeColors[pattern.type]}10`, border: `1px solid ${typeColors[pattern.type]}30` }}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">{pattern.type === 'growth' ? '📈' : pattern.type === 'concern' ? '💛' : pattern.type === 'achievement' ? '🏆' : '🔄'}</span>
+                                <span className="text-sm font-medium">{pattern.title}</span>
+                              </div>
+                              <p className="text-xs opacity-80">{pattern.description}</p>
+                              {pattern.suggestions.length > 0 && (
+                                <p className="text-xs mt-2" style={{ color: levelColor }}>
+                                  💡 {pattern.suggestions[0]}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 本周报告 */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 opacity-80">📅 本周总结</h4>
+                    <div className="rounded-2xl p-4" style={{ background: `${levelColor}10`, border: `1px solid ${levelColor}30` }}>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <div className="text-2xl font-light" style={{ color: levelColor }}>{weeklyReport.overview.totalEntries}</div>
+                          <div className="text-xs opacity-60">总记录</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-light" style={{ color: levelColor }}>{weeklyReport.overview.mostActivePlanet}</div>
+                          <div className="text-xs opacity-60">最活跃</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">情绪趋势:</span>
+                        <span className="text-lg">
+                          {weeklyReport.overview.moodTrend === 'up' ? '📈 上升' : weeklyReport.overview.moodTrend === 'down' ? '📉 下降' : '➡️ 平稳'}
+                        </span>
+                      </div>
+                      {weeklyReport.overview.achievements.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/10">
+                          <p className="text-xs opacity-80">🏆 {weeklyReport.overview.achievements[0]}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
