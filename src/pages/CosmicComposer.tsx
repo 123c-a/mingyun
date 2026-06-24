@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCosmicStore, type PlanetId, serializeForAI, syncFromPlanetPages } from '../store/cosmicStore'
+import { useCosmicStore, type PlanetId, serializeForAI, syncFromPlanetPages, CONSTELLATIONS, type Constellation } from '../store/cosmicStore'
 
 // ============================================================
 //  宇宙组合炼金师 · Cosmic Composer
@@ -8,13 +8,51 @@ import { useCosmicStore, type PlanetId, serializeForAI, syncFromPlanetPages } fr
 //  告诉你一件你一直知道的事。
 // ============================================================
 
-// ---------- 12 个预设配方 ----------
+// ---------- 4 种炼金模式 ----------
+export type AlchemyMode = 'insight' | 'healing' | 'action' | 'relation'
+
+const ALCHEMY_MODES: Record<AlchemyMode, { title: string; subtitle: string; description: string; icon: string }> = {
+  insight: {
+    title: '看见',
+    subtitle: 'Insight',
+    description: '把碎片放在一起，看见你一直知道的那件事',
+    icon: '✦',
+  },
+  healing: {
+    title: '温柔',
+    subtitle: 'Healing',
+    description: '用最柔软的方式，抱抱那个部分的自己',
+    icon: '❀',
+  },
+  action: {
+    title: '行动',
+    subtitle: 'Action',
+    description: '从混沌里找出下一步，今天只做一件事就够了',
+    icon: '➤',
+  },
+  relation: {
+    title: '关系',
+    subtitle: 'Relation',
+    description: '看看你和重要的人之间，正在发生什么',
+    icon: '❂',
+  },
+}
+
+function getModeInfo(mode: string | undefined | null) {
+  if (mode && mode in ALCHEMY_MODES) {
+    return ALCHEMY_MODES[mode as AlchemyMode]
+  }
+  return ALCHEMY_MODES.insight
+}
+
+// ---------- 18 个预设配方 ----------
 export interface Recipe {
   id: string
   title: string
   subtitle: string
   description: string
   planets: PlanetId[]
+  mode: AlchemyMode
 }
 
 const RECIPES: Recipe[] = [
@@ -24,6 +62,7 @@ const RECIPES: Recipe[] = [
     subtitle: '水星 × 火星',
     description: '把脑子里盘旋的句子，和身体里正在燃烧的情绪放在一起——看看它们在说同一件事吗？',
     planets: ['mercury', 'mars'],
+    mode: 'insight',
   },
   {
     id: 'r2',
@@ -31,6 +70,7 @@ const RECIPES: Recipe[] = [
     subtitle: '木星 × 太阳',
     description: '那些被别人照亮过的时刻，和你愿意相信的愿望——它们之间有一条看不见的线。',
     planets: ['jupiter', 'sun'],
+    mode: 'healing',
   },
   {
     id: 'r3',
@@ -38,6 +78,7 @@ const RECIPES: Recipe[] = [
     subtitle: '金星 × 火星 × 木星',
     description: '温柔的话、燃烧的情绪、被照亮的人——三种关系碎片放在一起，看你如何在关系里活着。',
     planets: ['venus', 'mars', 'jupiter'],
+    mode: 'relation',
   },
   {
     id: 'r4',
@@ -45,6 +86,7 @@ const RECIPES: Recipe[] = [
     subtitle: '土星 × 海王星',
     description: '过去改变过你的节点，和夜里反复出现的梦——它们可能在讲同一个故事。',
     planets: ['saturn', 'neptune'],
+    mode: 'insight',
   },
   {
     id: 'r5',
@@ -52,6 +94,7 @@ const RECIPES: Recipe[] = [
     subtitle: '天王星 × 太阳',
     description: '那个你反复走进的房间，和你真正想走到的地方——看看它们之间隔着什么。',
     planets: ['uranus', 'sun'],
+    mode: 'action',
   },
   {
     id: 'r6',
@@ -59,6 +102,7 @@ const RECIPES: Recipe[] = [
     subtitle: '地球 × 水星 × 火星',
     description: '从几何拼搭的身体感受、脑子里回旋的句子、到燃烧的情绪——完整地看见自己此刻在哪里。',
     planets: ['earth', 'mercury', 'mars'],
+    mode: 'insight',
   },
   {
     id: 'r7',
@@ -66,6 +110,7 @@ const RECIPES: Recipe[] = [
     subtitle: '水星 × 金星 × 木星 × 土星 × 太阳',
     description: '五个维度的碎片合在一起——从每日思绪到人生愿望，画一张你现在的完整地图。',
     planets: ['mercury', 'venus', 'jupiter', 'saturn', 'sun'],
+    mode: 'insight',
   },
   {
     id: 'r8',
@@ -73,6 +118,7 @@ const RECIPES: Recipe[] = [
     subtitle: '火星 × 天王星 × 海王星',
     description: '愤怒、困住的模式、夜里的梦——三者组合往往能浮现出你白天不愿看见的那部分自己。',
     planets: ['mars', 'uranus', 'neptune'],
+    mode: 'healing',
   },
   {
     id: 'r9',
@@ -80,6 +126,7 @@ const RECIPES: Recipe[] = [
     subtitle: '金星 × 太阳',
     description: '写一句温柔的话给自己，和一个愿意相信的愿望——两件事放在一起，就是今天的小仪式。',
     planets: ['venus', 'sun'],
+    mode: 'healing',
   },
   {
     id: 'r10',
@@ -87,6 +134,7 @@ const RECIPES: Recipe[] = [
     subtitle: '土星 × 木星 × 天王星',
     description: '从过去的改变节点、被照亮的时刻、到困住的模式——看看你的成长是一条怎样的路。',
     planets: ['saturn', 'jupiter', 'uranus'],
+    mode: 'insight',
   },
   {
     id: 'r11',
@@ -94,6 +142,7 @@ const RECIPES: Recipe[] = [
     subtitle: '海王星 × 太阳',
     description: '夜里反复出现的梦，和你愿意相信的愿望——梦是潜意识的愿望，愿望是清醒的梦。',
     planets: ['neptune', 'sun'],
+    mode: 'healing',
   },
   {
     id: 'r12',
@@ -101,6 +150,55 @@ const RECIPES: Recipe[] = [
     subtitle: '地球 × 水星 × 金星 × 火星',
     description: '身体感受、思绪、温柔的话、燃烧的情绪——四个当下维度一起，回答"我现在在哪里"。',
     planets: ['earth', 'mercury', 'venus', 'mars'],
+    mode: 'insight',
+  },
+  {
+    id: 'r13',
+    title: '走出困境的第一步',
+    subtitle: '天王星 × 火星 × 太阳',
+    description: '困住的模式、燃烧的情绪、和你的愿望——三者合在一起，找出今天能迈出的最小一步。',
+    planets: ['uranus', 'mars', 'sun'],
+    mode: 'action',
+  },
+  {
+    id: 'r14',
+    title: '我和这个人',
+    subtitle: '金星 × 木星 × 土星',
+    description: '你对他/她说不出的话、他/她照亮过你的时刻、以及这段关系经历过的时间——看看关系的全貌。',
+    planets: ['venus', 'jupiter', 'saturn'],
+    mode: 'relation',
+  },
+  {
+    id: 'r15',
+    title: '足迹与心情',
+    subtitle: '地球 × 水星 × 海王星',
+    description: '你去过的地方、脑子里的思绪、和夜里的梦——地理上的移动，和内在的旅程有什么关联？',
+    planets: ['earth', 'mercury', 'neptune'],
+    mode: 'insight',
+  },
+  {
+    id: 'r16',
+    title: '今日行动指南',
+    subtitle: '太阳 × 火星 × 地球',
+    description: '你的愿望、此刻的情绪、和身体的感受——合成一个今天可以做的具体动作。',
+    planets: ['sun', 'mars', 'earth'],
+    mode: 'action',
+  },
+  {
+    id: 'r17',
+    title: '关系里的我',
+    subtitle: '金星 × 天王星 × 木星',
+    description: '你在关系中的温柔模式、你在关系里重复的困境、和那些真正滋养你的人——看见你在关系里的样子。',
+    planets: ['venus', 'uranus', 'jupiter'],
+    mode: 'relation',
+  },
+  {
+    id: 'r18',
+    title: '给过去的自己一封信',
+    subtitle: '土星 × 金星 × 太阳',
+    description: '过去的那个节点、你现在的温柔、和你相信的愿望——写一封穿越时间的信，送给当时的自己。',
+    planets: ['saturn', 'venus', 'sun'],
+    mode: 'healing',
   },
 ]
 
@@ -108,17 +206,43 @@ const RECIPES: Recipe[] = [
 // 由于 aiService 没有统一的 compose 入口，这里直接调用 DeepSeek（有 Key 时），
 // 或走本地模板回退。保证页面始终可用。
 
-const COMPOSE_SYSTEM = `你是"宇宙组合炼金师"。你的工作是：
+function buildComposeSystem(mode: AlchemyMode): string {
+  const modeGuides: Record<AlchemyMode, string> = {
+    insight: `
+      你是"看见"模式的炼金师。你的工作是帮对方从碎片中看见自己。
+      语气：沉稳、清澈、像一面安静的镜子
+      重点：指出反复出现的主题、不同维度之间的关联、对方一直知道但没说出口的那件事
+      不要给建议，只是"看见"`,
+    healing: `
+      你是"温柔"模式的炼金师。你的工作是抱抱那个部分的自己。
+      语气：柔软、温暖、有呼吸感，像一个老朋友轻轻拍肩膀
+      重点：肯定对方的感受、让被压抑的部分被看见、给一个温柔的抱抱
+      不要说教，不要"你应该"，用"你辛苦了"、"没关系的"、"你已经做得很好了"这样的语气`,
+    action: `
+      你是"行动"模式的炼金师。你的工作是从混沌里找出下一步。
+      语气：清晰、有力、但不催促，像一个靠谱的向导
+      重点：从所有碎片里提炼出一个今天就可以做的具体小动作（不需要解决一切）
+      mantra 要是一句可以出发前默念的话，简短有力`,
+    relation: `
+      你是"关系"模式的炼金师。你的工作是帮对方看见关系的全貌。
+      语气：中立、有同理心、不评判任何一方
+      重点：指出关系中反复出现的模式、双方各自的需要、关系真正在说的话
+      不要站队，只是呈现关系的形状`,
+  }
 
-1. 阅读从多个"行星"收集到的个人碎片（思绪、情绪、梦、关系节点、愿望等）。
-2. 从碎片中找出它们共同指向的一句话——那件这个人一直知道、但还没有对自己说出来的事。
+  return `你是"宇宙组合炼金师"。你的工作是：
+
+1. 阅读从多个"行星"收集到的个人碎片（思绪、情绪、梦、关系节点、愿望、足迹地图、身体感受等）。
+2. 从碎片中找出它们共同指向的东西。
 3. 输出结构化结果。
 
-规则：
-- 语气温暖、沉稳、不鸡汤、不评判
-- 用"你"称呼读者，像一个看见他很久的老朋友
+${modeGuides[mode]}
+
+通用规则：
+- 用"你"称呼读者
 - 用中文、简体
-- 不要"你应该"，用"也许"、"我听到"、"你一直知道"
+- 不鸡汤、不评判
+- 不要"加油"、"努力"这类空泛的词
 
 输出 JSON：
 {
@@ -129,10 +253,13 @@ const COMPOSE_SYSTEM = `你是"宇宙组合炼金师"。你的工作是：
     { "heading": "小标题 3-8 字", "text": "该段正文 30-70 字" },
     { "heading": "小标题 3-8 字", "text": "该段正文 30-70 字" }
   ],
-  "mantra": "一句 8-15 字的真言——可以被默念的那句话（金色显示）"
+  "mantra": "一句 8-15 字的真言——可以被默念的那句话（金色显示）",
+  "actionTip": "（仅 action 模式需要）一个今天就可以做的具体小动作，15-30 字，非常具体"
 }
 
-sections 最少 2 段，最多 4 段。mantra 不要感叹号，不要"加油"类字眼——要像一声呼吸。`
+sections 最少 2 段，最多 4 段。mantra 不要感叹号——要像一声呼吸。
+只有 action 模式需要 actionTip 字段，其他模式不需要。`
+}
 
 async function callDeepSeekJSON<T>(system: string, user: string, fallback: () => Promise<T>): Promise<T> {
   const key = (import.meta as any).env?.VITE_DEEPSEEK_API_KEY || ''
@@ -177,6 +304,8 @@ interface ComposeResult {
   body: string
   sections: { heading: string; text: string }[]
   mantra: string
+  actionTip?: string
+  mode: AlchemyMode
 }
 
 function hashString(s: string): number {
@@ -188,13 +317,13 @@ function hashString(s: string): number {
   return Math.abs(h)
 }
 
-function localFallbackCompose(planetIds: PlanetId[]): ComposeResult {
+function localFallbackCompose(planetIds: PlanetId[], mode: AlchemyMode): ComposeResult {
   const names: Record<PlanetId, string> = {
-    mercury: '思绪', venus: '温柔', earth: '身体', mars: '情绪',
+    mercury: '思绪', venus: '温柔', earth: '身体与足迹', mars: '情绪',
     jupiter: '贵人', saturn: '年轮', uranus: '脱壳', neptune: '梦境', sun: '愿望',
   }
   const joined = planetIds.map((p) => names[p]).join('、')
-  const seed = planetIds.join('|')
+  const seed = planetIds.join('|') + ':' + mode
 
   const titlePool = [
     '你一直都知道这件事',
@@ -247,16 +376,23 @@ function localFallbackCompose(planetIds: PlanetId[]): ComposeResult {
   // 让 pickN 被使用，避免 TS unused 警告
   pickN([], 0)
 
-  return { title, body, sections, mantra }
+  const actionTip = mode === 'action'
+    ? '今天给自己倒一杯温水，慢慢喝完——这就是今天的第一步。'
+    : undefined
+
+  return { title, body, sections, mantra, actionTip, mode }
 }
 
-async function compose(planetIds: PlanetId[]): Promise<ComposeResult> {
+async function compose(planetIds: PlanetId[], mode: AlchemyMode): Promise<ComposeResult> {
+  const modeInfo = ALCHEMY_MODES[mode]
+
   if (planetIds.length === 0) {
     return {
       title: '请先选择行星',
       body: '从上面选 2-5 颗行星，让它们的碎片合在一起。',
       sections: [{ heading: '提示', text: '可以先去每颗行星留下自己的碎片——哪怕一句话也可以。' }],
       mantra: '从一句话开始。',
+      mode,
     }
   }
 
@@ -264,13 +400,14 @@ async function compose(planetIds: PlanetId[]): Promise<ComposeResult> {
   const hasContent = serialized.trim().length > 20
 
   const userPrompt = hasContent
-    ? `以下是这个人从不同行星收集到的碎片。请把它们合在一起，帮他/她说出那件一直知道的事：\n\n${serialized}\n\n——请给出结构化结果。`
-    : `这个人选择了以下几个维度的行星来组合：${planetIds.join('、')}。但这些行星目前还没有具体的个人数据条目。请仍然给出一次温柔的"空白页组合"——帮助他/她看到这些维度合在一起可以带来什么意义，并鼓励他/她去每颗行星写下自己的第一句话。`
+    ? `当前模式：${modeInfo.title}（${modeInfo.subtitle}）\n\n以下是这个人从不同行星收集到的碎片。请把它们合在一起，帮他/她说出那件一直知道的事：\n\n${serialized}\n\n——请给出结构化结果。`
+    : `当前模式：${modeInfo.title}（${modeInfo.subtitle}）\n\n这个人选择了以下几个维度的行星来组合：${planetIds.join('、')}。但这些行星目前还没有具体的个人数据条目。请仍然给出一次温柔的"空白页组合"——帮助他/她看到这些维度合在一起可以带来什么意义，并鼓励他/她去每颗行星写下自己的第一句话。`
 
-  return callDeepSeekJSON<ComposeResult>(COMPOSE_SYSTEM, userPrompt, async () => {
+  const raw = await callDeepSeekJSON<ComposeResult>(buildComposeSystem(mode), userPrompt, async () => {
     await new Promise((r) => setTimeout(r, 700 + Math.random() * 600))
-    return localFallbackCompose(planetIds)
+    return localFallbackCompose(planetIds, mode)
   })
+  return { ...raw, mode }
 }
 
 // ---------- 内联实现：导出长图（900 × 1300） ----------
@@ -316,10 +453,11 @@ function exportComposeAsImage(result: ComposeResult) {
   ctx.stroke()
 
   // 小标题
+  const modeInfo = getModeInfo(result.mode)
   ctx.fillStyle = 'rgba(255,210,120,0.75)'
   ctx.font = '500 14px Georgia, serif'
   ctx.textAlign = 'center'
-  ctx.fillText('— 宇宙组合炼金师 —', W / 2, 60)
+  ctx.fillText(`— 宇宙组合炼金师 · ${modeInfo.title}模式 —`, W / 2, 60)
 
   // 标题
   ctx.fillStyle = '#ffe8a0'
@@ -362,9 +500,43 @@ function exportComposeAsImage(result: ComposeResult) {
     y += 18
   }
 
-  // mantra 金色居中放大
-  const mantraY = H - 180
+  // action 模式下的 actionTip
+  let mantraY = H - 180
   ctx.textAlign = 'center'
+
+  if (result.mode === 'action' && result.actionTip) {
+    const tipY = H - 280
+    const tipWidth = W - 200
+
+    // 行动提示卡片背景
+    ctx.fillStyle = 'rgba(255,210,120,0.08)'
+    ctx.strokeStyle = 'rgba(255,210,120,0.3)'
+    ctx.lineWidth = 1
+    const tipX = 100
+    const tipLines = wrapText(ctx, result.actionTip, tipWidth, 26)
+    const tipHeight = 60 + tipLines.length * 28
+    const tipTop = tipY - 20
+    roundRect(ctx, tipX, tipTop, W - 200, tipHeight, 12)
+    ctx.fill()
+    ctx.stroke()
+
+    // "今日行动" 标题
+    ctx.fillStyle = '#ffe8a0'
+    ctx.font = '700 15px Georgia, serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('➤ 今日行动', W / 2, tipY + 5)
+
+    // actionTip 正文
+    ctx.fillStyle = '#fff4d0'
+    ctx.font = '400 15px Georgia, serif'
+    let ty = tipY + 35
+    for (const line of tipLines) {
+      ctx.fillText(line, W / 2, ty)
+      ty += 28
+    }
+
+    mantraY = H - 140
+  }
 
   // 装饰横线
   ctx.strokeStyle = 'rgba(255,210,120,0.35)'
@@ -399,6 +571,21 @@ function exportComposeAsImage(result: ComposeResult) {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+}
+
+// 辅助：画圆角矩形
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
 }
 
 // 辅助：根据给定宽度把一段中文文本折成多行
@@ -523,7 +710,13 @@ export default function CosmicComposer() {
   const getAllMetas = useCosmicStore((s) => s.getAllMetas)
   const metas = getAllMetas()
 
+  // 星座相关
+  const unlockedConstellations = useCosmicStore((s) => s.unlockedConstellations)
+  const unlockConstellation = useCosmicStore((s) => s.unlockConstellation)
+  const getConstellationByPlanets = useCosmicStore((s) => s.getConstellationByPlanets)
+
   const [selected, setSelected] = useState<Set<PlanetId>>(new Set())
+  const [mode, setMode] = useState<AlchemyMode>('insight')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ComposeResult | null>(null)
   const [, forceRender] = useState(0)
@@ -538,10 +731,20 @@ export default function CosmicComposer() {
     if (next.has(id)) next.delete(id)
     else if (next.size < 5) next.add(id)
     setSelected(next)
+
+    // 检查星座解锁
+    const selectedArray = Array.from(next)
+    const matchedConstellation = CONSTELLATIONS.find(c =>
+      c.planets.every(p => selectedArray.includes(p))
+    )
+    if (matchedConstellation && !unlockedConstellations.includes(matchedConstellation.id)) {
+      unlockConstellation(matchedConstellation.id)
+    }
   }
 
   const applyRecipe = (r: Recipe) => {
     setSelected(new Set(r.planets))
+    setMode(r.mode)
   }
 
   const doCompose = async () => {
@@ -549,11 +752,11 @@ export default function CosmicComposer() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await compose(Array.from(selected))
+      const res = await compose(Array.from(selected), mode)
       setResult(res)
     } catch (e) {
       console.warn(e)
-      setResult(localFallbackCompose(Array.from(selected)))
+      setResult(localFallbackCompose(Array.from(selected), mode))
     } finally {
       setLoading(false)
     }
@@ -606,7 +809,7 @@ export default function CosmicComposer() {
                   style={{
                     ...styles.planetCard,
                     ...(isSelected ? styles.planetCardSelected : {}),
-                    borderColor: isSelected ? m.color : 'rgba(200,208,232,0.12)',
+                    border: isSelected ? `1px solid ${m.color}` : '1px solid rgba(200,208,232,0.12)',
                     boxShadow: isSelected ? `0 0 24px ${m.color}66, inset 0 0 12px ${m.color}22` : 'none',
                   }}
                 >
@@ -629,11 +832,47 @@ export default function CosmicComposer() {
           </div>
         </section>
 
-        {/* ---------- 第二块：预设配方 ---------- */}
+        {/* ---------- 第一一点五块：模式选择 ---------- */}
+        <section style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <h2 style={styles.sectionTitle}>第二步 · 选择模式</h2>
+            <span style={{ color: 'rgba(200,208,232,0.45)', fontSize: 12, letterSpacing: 2 }}>4 种炼金模式</span>
+          </div>
+
+          <div style={styles.modeSelector}>
+            {(Object.keys(ALCHEMY_MODES) as AlchemyMode[]).map((m) => {
+              const info = ALCHEMY_MODES[m]
+              const isSelected = mode === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  style={{
+                    ...styles.modeBtn,
+                    ...(isSelected ? styles.modeBtnSelected : {}),
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>{info.icon}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 3, color: isSelected ? '#ffe8a0' : '#e8ecf8' }}>
+                    {info.title}
+                  </div>
+                  <div style={{ fontSize: 10, letterSpacing: 2, color: 'rgba(255,210,120,0.5)', marginTop: 2 }}>
+                    {info.subtitle}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(200,208,232,0.6)', marginTop: 8, lineHeight: 1.6 }}>
+                    {info.description}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* ---------- 第三块：预设配方 ---------- */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>或 · 使用配方</h2>
-            <span style={{ color: 'rgba(200,208,232,0.45)', fontSize: 12, letterSpacing: 2 }}>12 个预设</span>
+            <span style={{ color: 'rgba(200,208,232,0.45)', fontSize: 12, letterSpacing: 2 }}>18 个预设</span>
           </div>
 
           <div style={styles.recipesList}>
@@ -649,12 +888,17 @@ export default function CosmicComposer() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ color: match ? '#ffe8a0' : '#e8ecf8', fontSize: 15, fontWeight: 700, letterSpacing: 2 }}>
-                        {r.title}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <div style={styles.recipeModeBadge}>
+                        <span style={{ fontSize: 14 }}>{getModeInfo(r.mode).icon}</span>
                       </div>
-                      <div style={{ color: 'rgba(255,210,120,0.6)', fontSize: 11, letterSpacing: 3, marginTop: 4 }}>
-                        {r.subtitle}
+                      <div>
+                        <div style={{ color: match ? '#ffe8a0' : '#e8ecf8', fontSize: 15, fontWeight: 700, letterSpacing: 2 }}>
+                          {r.title}
+                        </div>
+                        <div style={{ color: 'rgba(255,210,120,0.6)', fontSize: 11, letterSpacing: 3, marginTop: 4 }}>
+                          {r.subtitle}
+                        </div>
                       </div>
                     </div>
                     {match && <div style={styles.checkMark}>✓</div>}
@@ -674,7 +918,151 @@ export default function CosmicComposer() {
           </div>
         </section>
 
-        {/* ---------- 第三块：生成按钮 ---------- */}
+        {/* ---------- 第三块：星座连线图鉴 ---------- */}
+        <section style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <h2 style={styles.sectionTitle}>星座连线图鉴</h2>
+            <span style={{ color: 'rgba(200,208,232,0.45)', fontSize: 12, letterSpacing: 2 }}>
+              {unlockedConstellations.length} / {CONSTELLATIONS.length} 已解锁
+            </span>
+          </div>
+
+          {/* 当前连线预览 */}
+          {selected.size > 0 && (
+            <div style={{
+              padding: '16px 20px',
+              background: 'rgba(255,210,120,0.06)',
+              borderRadius: 12,
+              border: '1px solid rgba(255,210,120,0.15)',
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,210,120,0.6)', letterSpacing: 3, marginBottom: 8 }}>
+                当前连线
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {Array.from(selected).map((p, i) => {
+                  const m = metas.find(m => m.id === p)
+                  return (
+                    <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: m?.color || '#ffe8a0', fontSize: 14, fontWeight: 700 }}>{m?.name}</span>
+                      {i < selected.size - 1 && <span style={{ color: 'rgba(255,210,120,0.3)' }}>×</span>}
+                    </span>
+                  )
+                })}
+              </div>
+              {/* 检查匹配的星座 */}
+              {(() => {
+                const matched = CONSTELLATIONS.find(c =>
+                  c.planets.every(p => Array.from(selected).includes(p))
+                )
+                if (matched) {
+                  const isUnlocked = unlockedConstellations.includes(matched.id)
+                  return (
+                    <div style={{
+                      marginTop: 12,
+                      padding: '10px 14px',
+                      background: isUnlocked ? 'rgba(255,210,120,0.12)' : 'rgba(255,210,120,0.04)',
+                      borderRadius: 8,
+                      border: isUnlocked ? '1px solid rgba(255,210,120,0.4)' : '1px dashed rgba(255,210,120,0.2)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>{isUnlocked ? '✦' : '◇'}</span>
+                        <span style={{ color: '#ffe8a0', fontSize: 14, fontWeight: 700 }}>{matched.name}</span>
+                        <span style={{ color: 'rgba(255,210,120,0.6)', fontSize: 11 }}>{matched.subtitle}</span>
+                      </div>
+                      {isUnlocked && (
+                        <div style={{
+                          marginTop: 10,
+                          fontSize: 13,
+                          color: 'rgba(255,244,208,0.8)',
+                          lineHeight: 1.8,
+                          paddingLeft: 24,
+                        }}>
+                          <div style={{ marginBottom: 6 }}>✦ {matched.interpretation}</div>
+                          <div style={{ fontSize: 12, color: 'rgba(255,210,120,0.6)', fontStyle: 'italic' }}>
+                            「{matched.wisdom}」
+                          </div>
+                        </div>
+                      )}
+                      {!isUnlocked && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,210,120,0.5)', paddingLeft: 24 }}>
+                          {matched.planets.length === 3 ? '◇ ◇ ◇ 需3颗行星连线' : '◇ ◇ 需2颗行星连线'}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                return null
+              })()}
+            </div>
+          )}
+
+          {/* 星座图鉴网格 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: 12,
+          }}>
+            {CONSTELLATIONS.map((c) => {
+              const isUnlocked = unlockedConstellations.includes(c.id)
+              const isMatched = c.planets.every(p => Array.from(selected).includes(p))
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    padding: '14px 16px',
+                    background: isUnlocked
+                      ? 'linear-gradient(135deg, rgba(255,210,120,0.12) 0%, rgba(255,180,80,0.08) 100%)'
+                      : 'rgba(255,255,255,0.02)',
+                    borderRadius: 10,
+                    border: isMatched
+                      ? '1px solid rgba(255,210,120,0.6)'
+                      : isUnlocked
+                        ? '1px solid rgba(255,210,120,0.25)'
+                        : '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: isMatched ? '0 0 20px rgba(255,210,120,0.2)' : 'none',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 18, color: isUnlocked ? '#ffe8a0' : 'rgba(255,255,255,0.2)' }}>
+                      {isUnlocked ? '✦' : '◇'}
+                    </span>
+                    <div>
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: isUnlocked ? '#ffe8a0' : 'rgba(255,255,255,0.4)',
+                      }}>
+                        {c.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,210,120,0.5)', letterSpacing: 2 }}>
+                        {c.subtitle}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>
+                    {c.description}
+                  </div>
+                  {isUnlocked && (
+                    <div style={{
+                      marginTop: 10,
+                      paddingTop: 10,
+                      borderTop: '1px solid rgba(255,210,120,0.1)',
+                      fontSize: 12,
+                      color: 'rgba(255,244,208,0.7)',
+                      lineHeight: 1.7,
+                    }}>
+                      {c.interpretation.substring(0, 60)}...
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* ---------- 第三点五块：生成按钮 ---------- */}
         <section style={{ ...styles.section, textAlign: 'center' }}>
           <button
             onClick={doCompose}
@@ -702,6 +1090,10 @@ export default function CosmicComposer() {
         {result && (
           <section style={styles.resultSection}>
             <div style={{ textAlign: 'center', marginBottom: 36 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'rgba(255,210,120,0.7)', fontSize: 13, letterSpacing: 3, marginBottom: 12 }}>
+                <span style={{ fontSize: 18 }}>{getModeInfo(result.mode).icon}</span>
+                <span>{getModeInfo(result.mode).title}模式 · {getModeInfo(result.mode).subtitle}</span>
+              </div>
               <div style={{ color: 'rgba(255,210,120,0.7)', fontSize: 12, letterSpacing: 5 }}>
                 · 合 · · · 金 · · · 成 ·
               </div>
@@ -726,9 +1118,56 @@ export default function CosmicComposer() {
               ))}
             </div>
 
+            {result.mode === 'action' && result.actionTip && (
+              <div style={styles.actionTipCard}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 20 }}>➤</span>
+                  <span style={{ color: '#ffe8a0', fontSize: 15, fontWeight: 700, letterSpacing: 3 }}>今日行动</span>
+                </div>
+                <div style={{ color: '#fff4d0', fontSize: 15, lineHeight: 1.9, letterSpacing: 1 }}>
+                  {result.actionTip}
+                </div>
+              </div>
+            )}
+
             <div style={styles.mantraBox}>
               <div style={{ color: 'rgba(255,210,120,0.35)', fontSize: 11, letterSpacing: 4, marginBottom: 14 }}>— mantra —</div>
               <div style={styles.mantraText}>{result.mantra}</div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ color: 'rgba(200,208,232,0.5)', fontSize: 11, letterSpacing: 3, marginBottom: 12 }}>换个模式看看</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {(Object.keys(ALCHEMY_MODES) as AlchemyMode[]).map((m) => {
+                  const info = ALCHEMY_MODES[m]
+                  const isCurrent = result.mode === m
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => {
+                        setMode(m)
+                        setLoading(true)
+                        setResult(null)
+                        compose(Array.from(selected), m).then((res) => {
+                          setResult(res)
+                          setLoading(false)
+                        }).catch((e) => {
+                          console.warn(e)
+                          setResult(localFallbackCompose(Array.from(selected), m))
+                          setLoading(false)
+                        })
+                      }}
+                      style={{
+                        ...styles.modeSwitchBtn,
+                        ...(isCurrent ? styles.modeSwitchBtnActive : {}),
+                      }}
+                    >
+                      <span style={{ fontSize: 14, marginRight: 4 }}>{info.icon}</span>
+                      <span style={{ fontSize: 12, letterSpacing: 1 }}>{info.title}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div style={styles.resultActions}>
@@ -811,7 +1250,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left',
     padding: 18,
     background: 'rgba(18,22,38,0.6)',
-    border: '1px solid',
+    border: '1px solid rgba(200,208,232,0.1)',
     borderRadius: 14,
     cursor: 'pointer',
     transition: 'all 0.25s ease',
@@ -820,6 +1259,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#e8ecf8',
   },
   planetCardSelected: {
+    border: '1px solid rgba(255,210,120,0.55)',
     background: 'rgba(255,210,120,0.08)',
   },
   checkMark: {
@@ -852,7 +1292,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#e8ecf8',
   },
   recipeCardSelected: {
-    borderColor: 'rgba(255,210,120,0.55)',
+    border: '1px solid rgba(255,210,120,0.55)',
     background: 'rgba(255,210,120,0.08)',
     boxShadow: '0 0 18px rgba(255,210,120,0.15)',
   },
@@ -997,6 +1437,67 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     boxShadow: '0 0 18px rgba(255,210,120,0.15)',
     transition: 'all 0.2s',
+  },
+  modeSelector: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 12,
+  },
+  modeBtn: {
+    textAlign: 'center',
+    padding: '20px 16px',
+    background: 'rgba(18,22,38,0.6)',
+    border: '1px solid rgba(200,208,232,0.1)',
+    borderRadius: 14,
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+    backdropFilter: 'blur(4px)',
+    fontFamily: 'Georgia, serif',
+    color: '#e8ecf8',
+  },
+  modeBtnSelected: {
+    border: '1px solid rgba(255,210,120,0.55)',
+    background: 'rgba(255,210,120,0.08)',
+    boxShadow: '0 0 20px rgba(255,210,120,0.15), inset 0 0 12px rgba(255,210,120,0.06)',
+  },
+  actionTipCard: {
+    marginTop: 24,
+    padding: '24px 28px',
+    background: 'linear-gradient(135deg, rgba(255,210,120,0.12), rgba(255,180,80,0.06))',
+    border: '1px solid rgba(255,210,120,0.35)',
+    borderRadius: 14,
+    boxShadow: '0 0 24px rgba(255,210,120,0.1), inset 0 0 16px rgba(255,210,120,0.05)',
+  },
+  modeSwitchBtn: {
+    fontFamily: 'Georgia, serif',
+    fontSize: 12,
+    letterSpacing: 1,
+    padding: '6px 14px',
+    borderRadius: 999,
+    border: '1px solid rgba(200,208,232,0.2)',
+    background: 'transparent',
+    color: 'rgba(200,208,232,0.6)',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  modeSwitchBtnActive: {
+    border: '1px solid rgba(255,210,120,0.5)',
+    background: 'rgba(255,210,120,0.1)',
+    color: '#ffe8a0',
+  },
+  recipeModeBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    background: 'rgba(255,210,120,0.1)',
+    border: '1px solid rgba(255,210,120,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffe8a0',
+    flexShrink: 0,
   },
 }
 

@@ -3,6 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import { useNavigate } from 'react-router-dom'
 import * as THREE from 'three'
+import { getComboConfig, getComboId } from '../data/comboConfigs'
+import { useSound } from '../hooks/useSound'
 
 interface PlanetData {
   id: string
@@ -51,8 +53,12 @@ interface LineConnection {
 interface Constellation {
   id: string
   name: string
+  subtitle: string
   connections: LineConnection[]
-  reward: string
+  planets: string[]
+  interpretation: string
+  wisdom: string
+  action: string
 }
 
 // 定义星座连线规则
@@ -60,41 +66,57 @@ const constellations: Constellation[] = [
   {
     id: 'triangle-1',
     name: '天枢三角',
+    subtitle: '内省之座',
     connections: [
       { from: 'mercury', to: 'venus' },
       { from: 'venus', to: 'earth' },
       { from: 'earth', to: 'mercury' }
     ],
-    reward: '解锁天枢三角星座'
+    planets: ['mercury', 'venus', 'earth'],
+    interpretation: '你的内心正在经历一场温柔的整合——思维、感受、落地行动，三者正在找到彼此的节奏。水星的念头在金星的温柔中变得柔软，最终在地球的实相中找到安放之处。',
+    wisdom: '不必急于得出结论，让思绪飘一会儿，让感受流过身体，让地球承接一切。答案会在你准备好的时候自己浮现。',
+    action: '今天找一个安静的角落，把脑子里的想法都写下来，然后问问心："你真正想要的是什么？"'
   },
   {
     id: 'triangle-2',
     name: '星芒三角',
+    subtitle: '行动之座',
     connections: [
       { from: 'mars', to: 'jupiter' },
       { from: 'jupiter', to: 'saturn' },
       { from: 'saturn', to: 'mars' }
     ],
-    reward: '解锁星芒三角星座'
+    planets: ['mars', 'jupiter', 'saturn'],
+    interpretation: '你正站在一个行动与责任的交汇点上——火星的热情在燃烧，木星的视野在扩展，土星的时间在提醒你什么是最重要的。三者形成的张力，正是你突破的契机。',
+    wisdom: '把火星的火焰导向木星的方向，用土星的耐心来打磨每一步。这不是冲刺，而是一场马拉松。快就是慢，慢就是快。',
+    action: '选出你生命中最重要的一件事，今天只做这一件事的第一步。'
   },
   {
     id: 'cross-1',
     name: '命运十字',
+    subtitle: '抉择之座',
     connections: [
       { from: 'mercury', to: 'jupiter' },
       { from: 'venus', to: 'saturn' }
     ],
-    reward: '解锁命运十字星座'
+    planets: ['mercury', 'jupiter', 'venus', 'saturn'],
+    interpretation: '你的生命中正在形成一个关键的结构——思维与扩张的对话，温柔与时间的舞蹈。这两条线索正在编织你的下一步。一个关于"想什么"，一个关于"爱什么"，它们的交点就是你的方向。',
+    wisdom: '倾听思维在说什么，观察扩张指向何方，感受温柔允许什么存在，注意时间在提醒什么。答案不在任何一个行星里，而是在它们的对话中。',
+    action: '画一个十字，上下左右分别写下你的想法、你的热爱、你的恐惧、你的渴望。中间那个交汇点，就是你的答案。'
   },
   {
     id: 'outer-triangle',
     name: '远域三角',
+    subtitle: '蜕变之座',
     connections: [
       { from: 'uranus', to: 'neptune' },
       { from: 'neptune', to: 'pluto' },
       { from: 'pluto', to: 'uranus' }
     ],
-    reward: '解锁远域三角星座'
+    planets: ['uranus', 'neptune', 'pluto'],
+    interpretation: '深层的转变正在发生——天王星打破困住你的模式，海王星从潜意识深处升起信息，冥王星在最深处推动重生。这三颗远域行星连成一线，意味着你正在经历一场灵魂级别的蜕变。',
+    wisdom: '这是最慢的变化，也是最深的。不要抗拒裂痕，那正是光照进来的地方。让梦境、让突破、让放下一起发生。你不是在失去，你是在蜕壳。',
+    action: '今晚睡觉前，对自己说："我愿意放下所有不再服务于我的东西。" 然后留意你做的梦。'
   }
 ]
 
@@ -644,19 +666,22 @@ for (const p of planets) {
 }
 
 // ========== 太阳 ==========
-function Sun() {
+function Sun({ onComposerRingClick, selectedPlanets }: { onComposerRingClick: () => void; selectedPlanets: string[] }) {
   const meshRef = useRef<THREE.Mesh>(null), glow1Ref = useRef<THREE.Mesh>(null)
   const glow2Ref = useRef<THREE.Mesh>(null), glow3Ref = useRef<THREE.Mesh>(null)
   const coronaRef = useRef<THREE.Mesh>(null)
   const composerRingRef = useRef<THREE.Mesh>(null)
+  const composerGroupRef = useRef<THREE.Group>(null)
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(false)
   const [composerHovered, setComposerHovered] = useState(false)
 
+  const COMPOSER_RADIUS = 10.0
+
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.1) * 60, t = state.clock.elapsedTime
     if (meshRef.current) meshRef.current.rotation.y += 0.002 * dt
-    const baseScale = hovered ? 1.15 : 1.0
+    const baseScale = hovered || composerHovered ? 1.15 : 1.0
     if (glow1Ref.current) { const cur = glow1Ref.current.scale.x; glow1Ref.current.scale.setScalar(cur + (baseScale * 1.18 + Math.sin(t * 1.8) * 0.05 - cur) * 0.1) }
     if (glow2Ref.current) { const cur = glow2Ref.current.scale.x; glow2Ref.current.scale.setScalar(cur + (baseScale * 1.45 + Math.sin(t * 1.2 + 0.5) * 0.08 - cur) * 0.08) }
     if (glow3Ref.current) { const cur = glow3Ref.current.scale.x; glow3Ref.current.scale.setScalar(cur + (baseScale * 1.75 + Math.sin(t * 0.8 + 1) * 0.1 - cur) * 0.06) }
@@ -664,11 +689,11 @@ function Sun() {
       coronaRef.current.rotation.y -= 0.001 * dt
       const cur = coronaRef.current.scale.x; coronaRef.current.scale.setScalar(cur + (baseScale * 2.1 + Math.sin(t * 0.5 + 2) * 0.08 - cur) * 0.05)
     }
-    if (composerRingRef.current) {
-      composerRingRef.current.rotation.z += 0.0008 * dt
-      const target = composerHovered ? 1.15 : 1.0
-      const cur = composerRingRef.current.scale.x
-      composerRingRef.current.scale.setScalar(cur + (target - cur) * 0.15)
+    if (composerGroupRef.current) {
+      composerGroupRef.current.rotation.y += 0.0008 * dt
+      const target = composerHovered ? 1.12 : 1.0
+      const cur = composerGroupRef.current.scale.x
+      composerGroupRef.current.scale.setScalar(cur + (target - cur) * 0.15)
     }
     if (meshRef.current) {
       const mat = meshRef.current.material as THREE.MeshBasicMaterial
@@ -677,35 +702,101 @@ function Sun() {
     }
   })
 
+  const handleComposerClick = (e: any) => {
+    e.stopPropagation()
+    onComposerRingClick()
+  }
+  const handleComposerOver = (e: any) => { e.stopPropagation(); setComposerHovered(true); document.body.style.cursor = 'pointer' }
+  const handleComposerOut = () => { setComposerHovered(false); document.body.style.cursor = 'auto' }
+
+  // 点击太阳：根据是否有连线决定进入组合页面还是太阳页面
+  const handleSunClick = (e: any) => {
+    e.stopPropagation()
+    if (selectedPlanets.length >= 2) {
+      onComposerRingClick()
+    } else {
+      navigate('/sun')
+    }
+  }
+
+  const nodeAngles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5]
+
   return (
     <group
-      onClick={(e) => { e.stopPropagation(); navigate('/sun') }}
+      onClick={handleSunClick}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
-      onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+      onPointerOut={() => { if (!composerHovered) { setHovered(false); document.body.style.cursor = 'auto' } }}
     >
-      {/* 组合实验室轨道环 */}
-      <mesh
-        ref={composerRingRef}
-        onClick={(e) => { e.stopPropagation(); navigate('/composer') }}
-        onPointerOver={(e) => { e.stopPropagation(); setComposerHovered(true); document.body.style.cursor = 'pointer' }}
-        onPointerOut={() => { setComposerHovered(false); document.body.style.cursor = 'auto' }}
-        rotation={[Math.PI / 2, 0, 0]}
-      >
-        <torusGeometry args={[5.2, 0.15, 8, 80]} />
-        <meshStandardMaterial
-          color="#ffe8a0"
-          emissive="#ffc060"
-          emissiveIntensity={composerHovered ? 2.5 : 1.2}
-          transparent
-          opacity={0.85}
-        />
-      </mesh>
       <mesh ref={meshRef}><sphereGeometry args={[3.8, 48, 48]} /><meshBasicMaterial map={sunTex} /></mesh>
-      <mesh ref={glow1Ref} scale={1.18}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffd880" transparent opacity={0.5} depthWrite={false} /></mesh>
-      <mesh ref={glow2Ref} scale={1.45}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffa840" transparent opacity={0.25} depthWrite={false} /></mesh>
-      <mesh ref={glow3Ref} scale={1.75}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff7020" transparent opacity={0.12} depthWrite={false} /></mesh>
-      <mesh ref={coronaRef} scale={2.1}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff4010" transparent opacity={0.06} depthWrite={false} side={THREE.BackSide} /></mesh>
+      {/* 光环 pointerEvents={false} 让点击穿透 */}
+      <mesh ref={glow1Ref} scale={1.18} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffd880" transparent opacity={0.5} depthWrite={false} /></mesh>
+      <mesh ref={glow2Ref} scale={1.45} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffa840" transparent opacity={0.25} depthWrite={false} /></mesh>
+      <mesh ref={glow3Ref} scale={1.75} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff7020" transparent opacity={0.12} depthWrite={false} /></mesh>
+      <mesh ref={coronaRef} scale={2.1} pointerEvents={false}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff4010" transparent opacity={0.06} depthWrite={false} side={THREE.BackSide} /></mesh>
       <pointLight color="#ffd880" intensity={3.2} distance={160} decay={1.0} />
+
+      {/* 组合实验室轨道环 — 放在最外层 */}
+      <group ref={composerGroupRef}>
+        {/* 厚碰撞体（不可见，用于更容易点击） */}
+        <mesh
+          onClick={handleComposerClick}
+          onPointerOver={handleComposerOver}
+          onPointerOut={handleComposerOut}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[COMPOSER_RADIUS, 1.0, 8, 120]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+        {/* 细光环（视觉效果） */}
+        <mesh
+          ref={composerRingRef}
+          rotation={[Math.PI / 2, 0, 0]}
+          pointerEvents={false}
+        >
+          <torusGeometry args={[COMPOSER_RADIUS, 0.12, 8, 120]} />
+          <meshStandardMaterial
+            color="#ffe8a0"
+            emissive="#ffc060"
+            emissiveIntensity={composerHovered ? 2.5 : 1.0}
+            transparent
+            opacity={0.7}
+          />
+        </mesh>
+        {/* 4个节点小球，更容易点击 */}
+        {nodeAngles.map((angle, i) => (
+          <mesh
+            key={i}
+            position={[Math.cos(angle) * COMPOSER_RADIUS, 0, Math.sin(angle) * COMPOSER_RADIUS]}
+            onClick={handleComposerClick}
+            onPointerOver={handleComposerOver}
+            onPointerOut={handleComposerOut}
+          >
+            <sphereGeometry args={[0.45, 24, 24]} />
+            <meshStandardMaterial
+              color="#fff0c0"
+              emissive="#ffc860"
+              emissiveIntensity={composerHovered ? 3.0 : 1.8}
+            />
+          </mesh>
+        ))}
+        {/* 4个节点外光晕（装饰用，点击穿透） */}
+        {nodeAngles.map((angle, i) => (
+          <mesh
+            key={'glow' + i}
+            position={[Math.cos(angle) * COMPOSER_RADIUS, 0, Math.sin(angle) * COMPOSER_RADIUS]}
+            scale={composerHovered ? 1.8 : 1.4}
+            pointerEvents={false}
+          >
+            <sphereGeometry args={[0.45, 16, 16]} />
+            <meshBasicMaterial
+              color="#ffd880"
+              transparent
+              opacity={0.35}
+              depthWrite={false}
+            />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 }
@@ -782,31 +873,25 @@ function Planet({
   onHover,
   hoveredId,
   lightTarget,
-  customPosition,
-  onDragStart,
-  onDrag,
-  onDragEnd,
-  isDragging,
   isSelected,
-  onPositionUpdate
+  onPositionUpdate,
+  onSelect,
 }: {
   data: PlanetData
   onHover: (id: string | null) => void
   hoveredId: string | null
   lightTarget: THREE.Vector3 | null
-  customPosition: THREE.Vector3 | null
-  onDragStart: (id: string) => void
-  onDrag: (id: string, position: THREE.Vector3) => void
-  onDragEnd: (id: string, isActualDrag: boolean) => void
-  isDragging: boolean
   isSelected: boolean
   onPositionUpdate: (id: string, position: THREE.Vector3) => void
+  onSelect: (id: string) => void
 }) {
   const meshRef = useRef<THREE.Mesh>(null), groupRef = useRef<THREE.Group>(null)
   const atmo1Ref = useRef<THREE.Mesh>(null), atmo2Ref = useRef<THREE.Mesh>(null)
   const ringRef = useRef<THREE.Mesh>(null), cloudRingRef = useRef<THREE.Mesh>(null)
   const navigate = useNavigate()
   const hoverDebounceRef = useRef<number | null>(null)
+  const lastClickTimeRef = useRef(0)
+  const DOUBLE_CLICK_DELAY = 300
 
   const tex = cache[data.id]
   const ringTex = cache[data.id + '_ring']
@@ -832,22 +917,13 @@ function Planet({
     if (cloudRingRef.current) cloudRingRef.current.rotation.y += data.rotationSpeed * 1.8 * dt
 
     if (groupRef.current) {
-      // 拖拽时使用自定义位置，否则使用轨道位置
-      if (isDragging && customPosition) {
-        groupRef.current.position.x += (customPosition.x - groupRef.current.position.x) * 0.25
-        groupRef.current.position.y += (customPosition.y - groupRef.current.position.y) * 0.25
-        groupRef.current.position.z += (customPosition.z - groupRef.current.position.z) * 0.25
-      } else if (!isDragging) {
-        const a = state.clock.elapsedTime * data.orbitSpeed + data.phase
-        groupRef.current.position.x = Math.cos(a) * data.orbitRadius
-        groupRef.current.position.z = Math.sin(a) * data.orbitRadius
-        groupRef.current.position.y = Math.sin(a) * Math.sin(data.orbitTilt) * data.orbitRadius * 0.15
-      }
+      const a = state.clock.elapsedTime * data.orbitSpeed + data.phase
+      groupRef.current.position.x = Math.cos(a) * data.orbitRadius
+      groupRef.current.position.z = Math.sin(a) * data.orbitRadius
+      groupRef.current.position.y = Math.sin(a) * Math.sin(data.orbitTilt) * data.orbitRadius * 0.15
 
-      // 更新位置引用，供连线可视化使用
       onPositionUpdate(data.id, groupRef.current.position)
 
-      // 光照追踪：悬停时将点光源目标设为行星位置
       if (isHovered && lightTarget) {
         lightTarget.x += (groupRef.current.position.x - lightTarget.x) * 0.06
         lightTarget.y += ((groupRef.current.position.y + data.size * 2) - lightTarget.y) * 0.06
@@ -855,7 +931,6 @@ function Planet({
       }
     }
 
-    // 缩放目标：悬停时1.4，选中时1.2，正常时1.0
     const targetScale = isHovered ? 1.4 : (isSelected ? 1.2 : 1.0)
     const lerp = Math.min(dt * 0.12, 0.18)
 
@@ -863,10 +938,8 @@ function Planet({
       const cur = meshRef.current.scale.x
       meshRef.current.scale.setScalar(cur + (targetScale - cur) * lerp)
       const mat = meshRef.current.material as THREE.MeshStandardMaterial
-      // 悬停时高亮，选中时次高亮
       const targetEmissive = isHovered ? 0.75 : (isSelected ? 0.55 : 0.28)
       mat.emissiveIntensity += ((isSelected ? 0.55 : 0.28) - mat.emissiveIntensity) * lerp
-      // 悬停时轻微偏移光源方向，产生高光移动效果
       if (isHovered) {
         mat.emissiveIntensity += 0.01 * Math.sin(state.clock.elapsedTime * 3)
       }
@@ -885,7 +958,6 @@ function Planet({
       const cur = ringRef.current.scale.x; ringRef.current.scale.setScalar(cur + (targetScale - cur) * lerp)
       const mat = ringRef.current.material as THREE.MeshStandardMaterial
       mat.opacity += ((isHovered ? 0.72 : 0.55) - mat.opacity) * lerp
-      // 土星光环缓慢旋转
       if (data.id === 'saturn') {
         ringRef.current.rotation.z += 0.0008
       }
@@ -902,49 +974,26 @@ function Planet({
     return () => { if (isHovered || isSelected) document.body.style.cursor = 'auto' }
   }, [isHovered, isSelected])
 
-  // 拖拽/点击区分：记录按下位置，移动超过阈值则视为拖拽
-  const dragStartRef = useRef<THREE.Vector3 | null>(null)
-  const dragDistanceRef = useRef(0)
-  const DRAG_THRESHOLD = 0.5 // 世界坐标单位：超过此值视为拖拽而非点击
-
-  const handlePointerDown = (e: any) => {
-    e.stopPropagation()
-    // 记录起始位置和初始距离
-    if (e.point) {
-      dragStartRef.current = new THREE.Vector3(e.point.x, e.point.y, e.point.z)
-    }
-    dragDistanceRef.current = 0
-    onDragStart(data.id)
-  }
-
-  const handlePointerMove = (e: any) => {
-    if (isDragging && e.point && dragStartRef.current) {
-      e.stopPropagation()
-      // 累积移动距离（XY平面）
-      const dx = e.point.x - dragStartRef.current.x
-      const dy = e.point.y - dragStartRef.current.y
-      const dz = e.point.z - dragStartRef.current.z
-      dragDistanceRef.current = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      // 将屏幕坐标转换为3D世界坐标
-      onDrag(data.id, e.point)
-    }
-  }
-
-  const handlePointerUp = (e: any) => {
-    if (isDragging) {
-      e.stopPropagation()
-      const isActualDrag = dragDistanceRef.current > DRAG_THRESHOLD
-      onDragEnd(data.id, isActualDrag)
-      dragStartRef.current = null
-      dragDistanceRef.current = 0
-    }
-  }
+  // 点击反馈动画
+  const [clickScale, setClickScale] = useState(1)
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleClick = (e: any) => {
     e.stopPropagation()
-    // 只有未拖拽（或拖拽距离小于阈值）的才视为点击，跳转到详情页
-    if (dragDistanceRef.current <= DRAG_THRESHOLD) {
+    const now = performance.now()
+    const timeDiff = now - lastClickTimeRef.current
+
+    // 点击反馈动画
+    setClickScale(0.9)
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
+    clickTimeoutRef.current = setTimeout(() => setClickScale(1), 150)
+
+    if (timeDiff < DOUBLE_CLICK_DELAY) {
       navigate(data.route)
+      lastClickTimeRef.current = 0
+    } else {
+      lastClickTimeRef.current = now
+      onSelect(data.id)
     }
   }
 
@@ -955,12 +1004,17 @@ function Planet({
         onClick={handleClick}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        scale={clickScale}
       >
         <sphereGeometry args={[data.size, 48, 48]} />
-        <meshStandardMaterial map={tex} color={data.color} emissive={data.emissive} emissiveIntensity={0.28} roughness={data.roughness} metalness={data.metalness} />
+        <meshStandardMaterial
+          map={tex}
+          color={data.color}
+          emissive={data.emissive}
+          emissiveIntensity={isSelected ? 0.6 : isHovered ? 0.45 : 0.28}
+          roughness={data.roughness}
+          metalness={data.metalness}
+        />
       </mesh>
 
       {data.hasAtmosphere && (
@@ -1142,18 +1196,35 @@ function ConstellationLines({
       const material = new THREE.LineBasicMaterial({
         color: isGlowing ? "#ffe8a0" : "#ffd700",
         transparent: true,
-        opacity: 0.8
+        opacity: 0.6
       })
       const line = new THREE.Line(geometry, material)
-      return { conn, geometry, line, material, isGlowing }
+
+      // 流动光点几何体
+      const flowGeometry = new THREE.BufferGeometry()
+      const flowPositions = new Float32Array(15) // 5个光点
+      flowGeometry.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3))
+      const flowMaterial = new THREE.PointsMaterial({
+        color: "#fff8e0",
+        size: 0.25,
+        transparent: true,
+        opacity: 0.9,
+        sizeAttenuation: true,
+        depthWrite: false,
+      })
+      const flowPoints = new THREE.Points(flowGeometry, flowMaterial)
+
+      return { conn, geometry, line, material, isGlowing, flowGeometry, flowPoints, flowMaterial }
     })
   }, [connections, glowingConnections])
 
   // 实时更新连线位置和发光效果
   useFrame((state) => {
     timeRef.current = state.clock.elapsedTime
+    const t = timeRef.current
+
     lineObjects.forEach((item, idx) => {
-      const { conn, geometry, line, isGlowing } = item
+      const { conn, geometry, isGlowing, flowGeometry } = item
       const fromPos = planetPositions[conn.from]
       const toPos = planetPositions[conn.to]
 
@@ -1170,12 +1241,31 @@ function ConstellationLines({
 
       // 动态调整发光线条的颜色（脉冲效果）
       const mat = item.material
-      if (item.isGlowing) {
-        const pulse = 0.7 + Math.sin(timeRef.current * 2) * 0.3
+      if (isGlowing) {
+        const pulse = 0.6 + Math.sin(t * 2) * 0.4
         mat.opacity = pulse
       } else {
-        mat.opacity = 0.8
+        mat.opacity = 0.5 + Math.sin(t * 1.5 + idx) * 0.15
       }
+
+      // 更新流动光点位置
+      const flowPos = flowGeometry.attributes.position.array as Float32Array
+      const dx = toPos.x - fromPos.x
+      const dy = toPos.y - fromPos.y
+      const dz = toPos.z - fromPos.z
+
+      for (let i = 0; i < 5; i++) {
+        const progress = ((t * 0.3 + i * 0.2) % 1 + 1) % 1
+        flowPos[i * 3] = fromPos.x + dx * progress
+        flowPos[i * 3 + 1] = fromPos.y + dy * progress
+        flowPos[i * 3 + 2] = fromPos.z + dz * progress
+      }
+      flowGeometry.attributes.position.needsUpdate = true
+
+      // 光点透明度随位置变化
+      const flowMat = item.flowMaterial
+      const glowPulse = 0.7 + Math.sin(t * 3) * 0.3
+      flowMat.opacity = isGlowing ? glowPulse : glowPulse * 0.7
     })
   })
 
@@ -1185,6 +1275,8 @@ function ConstellationLines({
       lineObjects.forEach(item => {
         item.geometry.dispose();
         (item.material as THREE.Material).dispose()
+        item.flowGeometry.dispose();
+        (item.flowMaterial as THREE.Material).dispose()
       })
     }
   }, [lineObjects])
@@ -1192,71 +1284,343 @@ function ConstellationLines({
   return (
     <group>
       {lineObjects.map((item, idx) => (
-        <primitive
-          key={`${item.conn.from}-${item.conn.to}-${idx}`}
-          object={item.line}
-          ref={(el: THREE.Line | null) => { if (el) linesRef.current[idx] = el }}
-        />
+        <group key={`${item.conn.from}-${item.conn.to}-${idx}`}>
+          <primitive
+            object={item.line}
+            ref={(el: THREE.Line | null) => { if (el) linesRef.current[idx] = el }}
+          />
+          <primitive object={item.flowPoints} />
+        </group>
       ))}
     </group>
   )
 }
 
-// ========== 选中行星高亮环 ==========
-function SelectionRing({ position }: { position: THREE.Vector3 | null }) {
-  const ringRef = useRef<THREE.Mesh>(null)
+// ========== 银河视图缩放监听 ==========
+function GalaxyZoomListener({ onZoomOut }: { onZoomOut: () => void }) {
+  const triggeredRef = useRef(false)
 
-  useFrame((state) => {
-    if (ringRef.current && position) {
-      ringRef.current.position.set(position.x, position.y, position.z)
-      ringRef.current.rotation.z += 0.02
-      ringRef.current.rotation.x += 0.01
+  useFrame(({ camera }) => {
+    const distance = camera.position.length()
+    if (distance > 85 && !triggeredRef.current) {
+      triggeredRef.current = true
+      onZoomOut()
     }
   })
 
-  if (!position) return null
+  return null
+}
+
+// ========== 选中行星高亮环 ==========
+function SelectionRing({
+  position,
+  color,
+}: {
+  position: THREE.Vector3
+  color?: string
+}) {
+  const ringRef = useRef<THREE.Mesh>(null)
+  const innerRingRef = useRef<THREE.Mesh>(null)
+  const glowRef = useRef<THREE.Mesh>(null)
+  const particlesRef = useRef<THREE.Points>(null)
+  const primaryColor = color || '#70d8e8'
+
+  const particleCount = 24
+  const particleData = useMemo(() => {
+    const positions = new Float32Array(particleCount * 3)
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2
+      const r = 2.5 + Math.random() * 0.3
+      positions[i * 3] = Math.cos(angle) * r
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 0.4
+      positions[i * 3 + 2] = Math.sin(angle) * r
+    }
+    return positions
+  }, [])
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (ringRef.current && position) {
+      ringRef.current.position.set(position.x, position.y, position.z)
+      ringRef.current.rotation.z += 0.02
+    }
+    if (innerRingRef.current && position) {
+      innerRingRef.current.position.set(position.x, position.y, position.z)
+      innerRingRef.current.rotation.z -= 0.03
+    }
+    if (glowRef.current && position) {
+      glowRef.current.position.set(position.x, position.y, position.z)
+      const pulse = 1 + Math.sin(t * 3) * 0.1
+      glowRef.current.scale.setScalar(pulse)
+    }
+    if (particlesRef.current && position) {
+      particlesRef.current.position.set(position.x, position.y, position.z)
+      particlesRef.current.rotation.y += 0.015
+    }
+  })
 
   return (
-    <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[1.8, 2.0, 32]} />
-      <meshBasicMaterial color="#ffd700" transparent opacity={0.6} side={THREE.DoubleSide} depthWrite={false} />
-    </mesh>
+    <group>
+      {/* 外发光环 */}
+      <mesh
+        ref={glowRef}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <ringGeometry args={[2.8, 3.2, 48]} />
+        <meshBasicMaterial
+          color={primaryColor}
+          transparent
+          opacity={0.2}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 主圆环 */}
+      <mesh
+        ref={ringRef}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <torusGeometry args={[2.2, 0.08, 12, 48]} />
+        <meshBasicMaterial
+          color={primaryColor}
+          transparent
+          opacity={0.7}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 内环 */}
+      <mesh
+        ref={innerRingRef}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <ringGeometry args={[1.6, 1.9, 32]} />
+        <meshBasicMaterial
+          color={primaryColor}
+          transparent
+          opacity={0.4}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 粒子环 */}
+      <points ref={particlesRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={particleCount} array={particleData} itemSize={3} />
+        </bufferGeometry>
+        <pointsMaterial
+          color={primaryColor}
+          size={0.1}
+          transparent
+          opacity={0.6}
+          sizeAttenuation
+          depthWrite={false}
+        />
+      </points>
+    </group>
+  )
+}
+
+// ========== 组合圆环（连线中点，点击进入组合页面） ==========
+function ComboRing({
+  position,
+  comboId,
+  onClick
+}: {
+  position: THREE.Vector3 | null
+  comboId: string | null
+  onClick: () => void
+}) {
+  const ringRef = useRef<THREE.Mesh>(null)
+  const innerRingRef = useRef<THREE.Mesh>(null)
+  const outerRingRef = useRef<THREE.Mesh>(null)
+  const glowRingRef = useRef<THREE.Mesh>(null)
+  const particlesRef = useRef<THREE.Points>(null)
+  const [hovered, setHovered] = useState(false)
+
+  const combo = comboId ? getComboConfig(comboId.split('-')) : null
+  const primaryColor = combo?.primaryColor || '#ffd700'
+  const secondaryColor = combo?.secondaryColor || '#ffd700'
+  const level = combo?.level || 2
+
+  const particleCount = level === 2 ? 30 : level === 3 ? 50 : level === 4 ? 80 : 120
+
+  const particleData = useMemo(() => {
+    const positions = new Float32Array(particleCount * 3)
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2
+      const r = 1.5 + (level - 2) * 0.5 + Math.random() * 0.4
+      positions[i * 3] = Math.cos(angle) * r
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 0.4
+      positions[i * 3 + 2] = Math.sin(angle) * r
+    }
+    return positions
+  }, [particleCount, level])
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (ringRef.current && position) {
+      ringRef.current.position.set(position.x, position.y, position.z)
+      ringRef.current.rotation.z += level === 2 ? 0.015 : level === 3 ? 0.02 : level === 4 ? 0.025 : 0.03
+    }
+    if (innerRingRef.current && position) {
+      innerRingRef.current.position.set(position.x, position.y, position.z)
+      innerRingRef.current.rotation.z -= level === 2 ? 0.025 : level === 3 ? 0.035 : level === 4 ? 0.045 : 0.055
+    }
+    if (outerRingRef.current && position) {
+      outerRingRef.current.position.set(position.x, position.y, position.z)
+      outerRingRef.current.rotation.x += 0.01
+      outerRingRef.current.rotation.y += 0.008
+    }
+    if (glowRingRef.current && position) {
+      glowRingRef.current.position.set(position.x, position.y, position.z)
+      const pulse = 1 + Math.sin(t * 2) * 0.08
+      glowRingRef.current.scale.setScalar(pulse)
+    }
+    if (particlesRef.current && position) {
+      particlesRef.current.position.set(position.x, position.y, position.z)
+      particlesRef.current.rotation.y += level === 2 ? 0.008 : level === 3 ? 0.012 : level === 4 ? 0.018 : 0.025
+    }
+  })
+
+  useEffect(() => {
+    if (hovered) document.body.style.cursor = 'pointer'
+    return () => { if (hovered) document.body.style.cursor = 'auto' }
+  }, [hovered])
+
+  if (!position || !comboId) return null
+
+  const ringSize = level === 2 ? 1.2 : level === 3 ? 1.6 : level === 4 ? 2.0 : 2.5
+  const innerRingOuter = level === 2 ? 0.8 : level === 3 ? 1.1 : level === 4 ? 1.4 : 1.8
+  const innerRingInner = level === 2 ? 0.6 : level === 3 ? 0.8 : level === 4 ? 1.0 : 1.3
+
+  return (
+    <group>
+      {/* 外发光环（4星专用） */}
+      {level >= 4 && (
+        <mesh
+          ref={glowRingRef}
+          rotation={[Math.PI / 2, 0, 0]}
+          position={position}
+          onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+          onPointerOut={() => setHovered(false)}
+          onClick={(e) => { e.stopPropagation(); onClick() }}
+        >
+          <ringGeometry args={[ringSize + 0.8, ringSize + 1.0, 64]} />
+          <meshBasicMaterial
+            color={secondaryColor}
+            transparent
+            opacity={hovered ? 0.35 : 0.18}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {/* 外环（3星及以上） */}
+      {level >= 3 && (
+        <mesh
+          ref={outerRingRef}
+          position={position}
+          onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+          onPointerOut={() => setHovered(false)}
+          onClick={(e) => { e.stopPropagation(); onClick() }}
+        >
+          <torusGeometry args={[ringSize + 0.4, 0.08, 12, 48]} />
+          <meshBasicMaterial
+            color={secondaryColor}
+            transparent
+            opacity={hovered ? 0.6 : 0.35}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {/* 主圆环 */}
+      <mesh
+        ref={ringRef}
+        rotation={[Math.PI / 2, 0, 0]}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+        onPointerOut={() => setHovered(false)}
+        onClick={(e) => { e.stopPropagation(); onClick() }}
+      >
+        <torusGeometry args={[ringSize, level === 5 ? 0.25 : level === 4 ? 0.2 : 0.15, 16, 48]} />
+        <meshBasicMaterial
+          color={primaryColor}
+          transparent
+          opacity={hovered ? 0.95 : 0.65}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 内环 */}
+      <mesh
+        ref={innerRingRef}
+        rotation={[Math.PI / 2, 0, 0]}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+        onPointerOut={() => setHovered(false)}
+        onClick={(e) => { e.stopPropagation(); onClick() }}
+      >
+        <ringGeometry args={[innerRingInner, innerRingOuter, 32]} />
+        <meshBasicMaterial
+          color={primaryColor}
+          transparent
+          opacity={hovered ? 0.75 : 0.45}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* 粒子环 */}
+      <points
+        ref={particlesRef}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+        onPointerOut={() => setHovered(false)}
+        onClick={(e) => { e.stopPropagation(); onClick() }}
+      >
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={particleCount} array={particleData} itemSize={3} />
+        </bufferGeometry>
+        <pointsMaterial
+          color={primaryColor}
+          size={level === 5 ? 0.15 : level === 4 ? 0.12 : 0.08}
+          transparent
+          opacity={hovered ? 0.8 : 0.5}
+          sizeAttenuation
+          depthWrite={false}
+        />
+      </points>
+    </group>
   )
 }
 
 // ========== 主场景（带状态） ==========
 function SceneWithState({
   selectedPlanets,
-  setSelectedPlanets,
-  completedConnections,
-  unlockedConstellations,
-  customPositions,
-  updatePlanetPosition,
-  getPlanetPosition,
-  handleDragStart,
-  handleDrag,
-  handleDragEnd,
   allConnections,
   glowingConnections,
   hoveredId,
-  setHoveredId
+  setHoveredId,
+  onGalaxyZoom,
+  onComposerRingClick,
+  onPlanetSelect,
+  onComboClick,
 }: {
   selectedPlanets: string[]
-  setSelectedPlanets: React.Dispatch<React.SetStateAction<string[]>>
-  completedConnections: LineConnection[]
-  unlockedConstellations: string[]
-  customPositions: Record<string, THREE.Vector3>
-  updatePlanetPosition: (id: string, position: THREE.Vector3) => void
-  getPlanetPosition: (id: string) => THREE.Vector3 | null
-  handleDragStart: (id: string, setDragging: (id: string | null) => void) => void
-  handleDrag: (id: string, position: THREE.Vector3) => void
-  handleDragEnd: (id: string, setDragging: (id: string | null) => void, isActualDrag: boolean) => void
   allConnections: LineConnection[]
   glowingConnections?: LineConnection[]
   hoveredId: string | null
   setHoveredId: (id: string | null) => void
+  onGalaxyZoom: () => void
+  onComposerRingClick: () => void
+  onPlanetSelect: (id: string) => void
+  onComboClick: (comboId: string) => void
 }) {
-  const [draggingPlanetId, setDraggingPlanetId] = useState<string | null>(null)
   const lightTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0))
   const hoverLightRef = useRef<THREE.PointLight>(null)
   const planetPositionRefs = useRef<Record<string, THREE.Vector3>>({})
@@ -1267,20 +1631,9 @@ function SceneWithState({
     }
   })
 
-  // 更新行星位置引用
   const onPositionUpdate = useCallback((planetId: string, position: THREE.Vector3) => {
     planetPositionRefs.current[planetId] = position
-    updatePlanetPosition(planetId, position)
-  }, [updatePlanetPosition])
-
-  // 包装拖拽处理函数
-  const wrappedHandleDragStart = useCallback((planetId: string) => {
-    handleDragStart(planetId, setDraggingPlanetId)
-  }, [handleDragStart])
-
-  const wrappedHandleDragEnd = useCallback((planetId: string, isActualDrag: boolean) => {
-    handleDragEnd(planetId, setDraggingPlanetId, isActualDrag)
-  }, [handleDragEnd])
+  }, [])
 
   return (
     <>
@@ -1301,7 +1654,7 @@ function SceneWithState({
         enablePan={false}
         enableZoom={true}
         minDistance={18}
-        maxDistance={90}
+        maxDistance={100}
         autoRotate
         autoRotateSpeed={0.08}
         enableDamping
@@ -1309,7 +1662,8 @@ function SceneWithState({
         rotateSpeed={0.45}
         zoomSpeed={0.5}
       />
-      <Sun />
+      <GalaxyZoomListener onZoomOut={onGalaxyZoom} />
+      <Sun onComposerRingClick={onComposerRingClick} selectedPlanets={selectedPlanets} />
       {planets.map((p, i) => <OrbitRing key={`o-${p.id}`} radius={p.orbitRadius} tilt={p.orbitTilt} index={i} />)}
       {planets.map(p => (
         <Planet
@@ -1318,13 +1672,9 @@ function SceneWithState({
           onHover={setHoveredId}
           hoveredId={hoveredId}
           lightTarget={hoveredId ? lightTargetRef.current : null}
-          customPosition={customPositions[p.id] || null}
-          onDragStart={wrappedHandleDragStart}
-          onDrag={handleDrag}
-          onDragEnd={wrappedHandleDragEnd}
-          isDragging={draggingPlanetId === p.id}
           isSelected={selectedPlanets.includes(p.id)}
           onPositionUpdate={onPositionUpdate}
+          onSelect={onPlanetSelect}
         />
       ))}
 
@@ -1339,9 +1689,41 @@ function SceneWithState({
 
       {/* 已选中行星高亮环 */}
       {selectedPlanets.map(planetId => {
-        const position = planetPositionRefs.current[planetId] || getPlanetPosition(planetId)
+        const position = planetPositionRefs.current[planetId]
         return position ? <SelectionRing key={planetId} position={position} /> : null
       })}
+
+      {/* 组合圆环：当选中2-3颗行星且有对应组合时显示 */}
+      {selectedPlanets.length >= 2 && (() => {
+        const combo = getComboConfig(selectedPlanets)
+        if (!combo) return null
+
+        // 计算所有选中行星的中心位置
+        const positions = selectedPlanets
+          .map(id => planetPositionRefs.current[id])
+          .filter(Boolean)
+
+        if (positions.length < 2) return null
+
+        const centerPos = positions.reduce(
+          (acc, pos) => ({
+            x: acc.x + pos.x / positions.length,
+            y: acc.y + pos.y / positions.length,
+            z: acc.z + pos.z / positions.length,
+          }),
+          { x: 0, y: 0, z: 0 }
+        )
+
+        const midPos = new THREE.Vector3(centerPos.x, centerPos.y, centerPos.z)
+
+        return (
+          <ComboRing
+            position={midPos}
+            comboId={combo.id}
+            onClick={() => onComboClick(combo.id)}
+          />
+        )
+      })()}
 
       <ambientLight intensity={0.12} />
       <directionalLight position={[15, 25, 12]} intensity={0.18} color="#fff8e8" />
@@ -1352,141 +1734,53 @@ function SceneWithState({
 
 // ========== 主组件 ==========
 export default function GameScene() {
+  const navigate = useNavigate()
   const [selectedPlanets, setSelectedPlanets] = useState<string[]>([])
   const [completedConnections, setCompletedConnections] = useState<LineConnection[]>([])
   const [unlockedConstellations, setUnlockedConstellations] = useState<string[]>([])
   const [glowingConnections, setGlowingConnections] = useState<LineConnection[]>([])
-  const [customPositions, setCustomPositions] = useState<Record<string, THREE.Vector3>>({})
-  const planetPositionRefs = useRef<Record<string, THREE.Vector3>>({})
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [showGalaxyHint, setShowGalaxyHint] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const { playSound, playComboSound } = useSound(soundEnabled)
 
-  // 面板折叠状态
+  const handleGalaxyZoom = useCallback(() => {
+    navigate('/galaxy')
+  }, [navigate])
+
+  const handlePlanetSelect = useCallback((planetId: string) => {
+    setSelectedPlanets(prev => {
+      if (prev.includes(planetId)) {
+        playSound('select')
+        return prev.filter(id => id !== planetId)
+      }
+      playSound('connect')
+      return [...prev, planetId]
+    })
+  }, [playSound])
+
+  const handleComboClick = useCallback((comboId: string) => {
+    const planets = comboId.split('-')
+    const validId = getComboId(planets)
+    const finalId = validId || [...planets].sort().join('-')
+    const combo = getComboConfig(planets)
+    if (combo) {
+      playComboSound(combo.level)
+    }
+    navigate(`/combo/${finalId}`)
+  }, [navigate, playComboSound])
+
   const [panelCollapsed, setPanelCollapsed] = useState(true)
-  const navigate = useNavigate()
 
-  // 解锁弹窗状态
   const [showUnlockPopup, setShowUnlockPopup] = useState(false)
-  const [unlockPopupData, setUnlockPopupData] = useState<{ name: string; reward: string } | null>(null)
+  const [unlockPopupData, setUnlockPopupData] = useState<Constellation | null>(null)
 
-  // 存储行星当前位置引用
-  const updatePlanetPosition = useCallback((planetId: string, position: THREE.Vector3) => {
-    planetPositionRefs.current[planetId] = position
-  }, [])
-
-  // 获取行星当前位置
-  const getPlanetPosition = useCallback((planetId: string): THREE.Vector3 | null => {
-    if (customPositions[planetId]) {
-      return customPositions[planetId]
-    }
-    return planetPositionRefs.current[planetId] || null
-  }, [customPositions])
-
-  // 处理拖拽开始
-  const handleDragStart = useCallback((planetId: string, setDraggingPlanetId: (id: string | null) => void) => {
-    setDraggingPlanetId(planetId)
-    if (!selectedPlanets.includes(planetId)) {
-      setSelectedPlanets(prev => [...prev, planetId])
-    }
-  }, [selectedPlanets])
-
-  // 处理拖拽移动
-  const handleDrag = useCallback((planetId: string, position: THREE.Vector3) => {
-    setCustomPositions(prev => ({
-      ...prev,
-      [planetId]: position
-    }))
-  }, [])
-
-  // 处理拖拽结束
-  const handleDragEnd = useCallback((
-    planetId: string,
-    setDraggingPlanetId: (id: string | null) => void,
-    isActualDrag: boolean
-  ) => {
-    setDraggingPlanetId(null)
-
-    // 只有真正的拖拽（鼠标移动超过阈值）才进行连线检测
-    // 轻触/点击不触发连线，留给 navigate 处理
-    if (!isActualDrag) return
-
-    const currentPos = customPositions[planetId] || planetPositionRefs.current[planetId]
-    if (!currentPos) return
-
-    let snappedTo: string | null = null
-
-    for (const selectedId of selectedPlanets) {
-      if (selectedId === planetId) continue
-
-      const targetPos = customPositions[selectedId] || planetPositionRefs.current[selectedId]
-      if (!targetPos) continue
-
-      const distance = currentPos.distanceTo(targetPos)
-
-      // 吸附阈值稍微放宽，让拖拽连线更容易
-      if (distance < 5) {
-        snappedTo = selectedId
-        setCustomPositions(prev => ({
-          ...prev,
-          [planetId]: targetPos.clone()
-        }))
-        break
-      }
-    }
-
-    if (snappedTo) {
-      const newConnection: LineConnection = {
-        from: snappedTo,
-        to: planetId
-      }
-
-      const connectionExists = completedConnections.some(
-        c => (c.from === newConnection.from && c.to === newConnection.to) ||
-             (c.from === newConnection.to && c.to === newConnection.from)
-      )
-
-      if (!connectionExists) {
-        const updatedConnections = [...completedConnections, newConnection]
-
-        // 检查星座完成
-        for (const constellation of constellations) {
-          if (unlockedConstellations.includes(constellation.id)) continue
-
-          const allConnectionsExist = constellation.connections.every(conn => {
-            return updatedConnections.some(
-              c => (c.from === conn.from && c.to === conn.to) ||
-                   (c.from === conn.to && c.to === conn.from)
-            )
-          })
-
-          if (allConnectionsExist) {
-            setUnlockedConstellations(prev => [...prev, constellation.id])
-            // 触发解锁彩蛋：设置发光连线
-            setGlowingConnections(constellation.connections)
-            // 触发解锁彩蛋弹窗
-            setUnlockPopupData({ name: constellation.name, reward: constellation.reward })
-            setShowUnlockPopup(true)
-            // 2.5秒后自动关闭弹窗并清除发光
-            setTimeout(() => {
-              setShowUnlockPopup(false)
-              setGlowingConnections([])
-            }, 2500)
-          }
-        }
-
-        setCompletedConnections(updatedConnections)
-      }
-    }
-  }, [selectedPlanets, completedConnections, customPositions, unlockedConstellations])
-
-  // 重置游戏
   const resetGame = useCallback(() => {
     setSelectedPlanets([])
     setCompletedConnections([])
     setUnlockedConstellations([])
-    setCustomPositions({})
   }, [])
 
-  // 获取活跃连线
   const activeConnections = selectedPlanets.length >= 2
     ? selectedPlanets.slice(0, -1).map((id, idx) => ({
         from: id,
@@ -1501,19 +1795,21 @@ export default function GameScene() {
       <Canvas camera={{ position: [0, 7, 46], fov: 52, near: 0.1, far: 1000 }} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }} dpr={[1, 1.5]}>
         <SceneWithState
           selectedPlanets={selectedPlanets}
-          setSelectedPlanets={setSelectedPlanets}
-          completedConnections={completedConnections}
-          unlockedConstellations={unlockedConstellations}
-          customPositions={customPositions}
-          updatePlanetPosition={updatePlanetPosition}
-          getPlanetPosition={getPlanetPosition}
-          handleDragStart={handleDragStart}
-          handleDrag={handleDrag}
-          handleDragEnd={handleDragEnd}
           allConnections={allConnections}
           glowingConnections={glowingConnections}
           hoveredId={hoveredId}
           setHoveredId={setHoveredId}
+          onGalaxyZoom={handleGalaxyZoom}
+          onComposerRingClick={() => {
+            if (selectedPlanets.length >= 2) {
+              const comboId = [...selectedPlanets].sort().join('-')
+              navigate(`/combo/${comboId}`)
+            } else {
+              if (panelCollapsed) setPanelCollapsed(false)
+            }
+          }}
+          onPlanetSelect={handlePlanetSelect}
+          onComboClick={handleComboClick}
         />
       </Canvas>
 
@@ -1610,7 +1906,7 @@ export default function GameScene() {
                   textAlign: 'center',
                   letterSpacing: '3px'
                 }}>
-                  [ 点击进入 · 详细界面 ]
+                  ✦ 双击进入专属功能 ✦
                 </div>
               </div>
             )}
@@ -1635,9 +1931,14 @@ export default function GameScene() {
 
       <div className="absolute bottom-6 right-6 pointer-events-none select-none text-right">
         <div className="space-y-[6px]">
-          {['拖动 · 旋转视角', '滚轮 · 缩放远近', '点击 · 进入星盘'].map((t, i) => (
-            <div key={i} className="flex items-center justify-end gap-4">
-              <span className="text-[10px] text-amber-100/45 tracking-[0.28em] font-light">{t}</span>
+          {[
+            { key: 'drag', text: '拖动旋转视角' },
+            { key: 'wheel', text: '滚轮缩放远近' },
+            { key: 'click', text: '点击选中行星' },
+            { key: 'dblclick', text: '双击进入页面' },
+          ].map((item, i) => (
+            <div key={item.key} className="flex items-center justify-end gap-4 animate-[fadeIn_0.3s_ease-out]" style={{ animationDelay: `${i * 0.1}s`, opacity: 0 }}>
+              <span className="text-[10px] text-amber-100/45 tracking-[0.28em] font-light">{item.text}</span>
               <span className="text-amber-200/60 text-base leading-none">·</span>
             </div>
           ))}
@@ -1658,14 +1959,19 @@ export default function GameScene() {
           /* 折叠状态：小图标按钮 */
           <button
             onClick={() => setPanelCollapsed(false)}
-            className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-amber-200/30 hover:border-amber-200/60 text-amber-200/70 hover:text-amber-200 text-lg flex items-center justify-center transition-all shadow-lg shadow-amber-900/20"
+            className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-amber-200/30 hover:border-amber-200/60 text-amber-200/70 hover:text-amber-200 text-lg flex items-center justify-center transition-all shadow-lg shadow-amber-900/20 animate-[fadeIn_0.3s_ease-out]"
             title="展开星座图鉴"
           >
             ★
           </button>
         ) : (
           /* 展开状态：完整面板 */
-          <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-amber-200/20 min-w-[180px] shadow-xl shadow-amber-900/20 relative">
+          <div
+            className="bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-amber-200/20 min-w-[180px] shadow-xl shadow-amber-900/20 relative animate-[slideIn_0.25s_ease-out]"
+            style={{
+              animation: 'slideIn 0.25s ease-out',
+            }}
+          >
             {/* 折叠按钮 */}
             <button
               onClick={() => setPanelCollapsed(true)}
@@ -1679,18 +1985,28 @@ export default function GameScene() {
 
             {constellations.map(constellation => {
               const isUnlocked = unlockedConstellations.includes(constellation.id)
+              const comboId = getComboId(constellation.planets)
+              const dynamicComboId = [...constellation.planets].sort().join('-')
               return (
                 <div
                   key={constellation.id}
-                  className={`mb-1.5 px-2 py-1 rounded ${
+                  onClick={() => {
+                    if (isUnlocked) {
+                      navigate(`/combo/${comboId || dynamicComboId}`)
+                    }
+                  }}
+                  className={`mb-1.5 px-2 py-1 rounded transition-all ${
                     isUnlocked
-                      ? 'bg-amber-200/15 text-amber-200'
-                      : 'bg-black/30 text-amber-100/40'
+                      ? 'bg-amber-200/15 text-amber-200 hover:bg-amber-200/25 cursor-pointer'
+                      : 'bg-black/30 text-amber-100/40 cursor-default'
                   }`}
                 >
-                  <div className="text-xs font-medium">{constellation.name}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-medium">{constellation.name}</div>
+                    {isUnlocked && <span className="text-[10px]">→</span>}
+                  </div>
                   {isUnlocked && (
-                    <div className="text-[9px] text-amber-300/60 mt-0.5">✦ {constellation.reward}</div>
+                    <div className="text-[9px] text-amber-300/60 mt-0.5">{constellation.subtitle}</div>
                   )}
                   {!isUnlocked && (
                     <div className="text-[9px] text-amber-100/30 mt-0.5">
@@ -1700,6 +2016,25 @@ export default function GameScene() {
                 </div>
               )
             })}
+
+            {/* 当前连线组合入口 */}
+            {selectedPlanets.length >= 2 && (
+              <div
+                onClick={() => {
+                  const comboId = [...selectedPlanets].sort().join('-')
+                  navigate(`/combo/${comboId}`)
+                }}
+                className="mt-2 px-2 py-2 rounded transition-all border bg-amber-400/20 text-amber-200 hover:bg-amber-400/30 cursor-pointer border-amber-400/30"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-medium">查看当前组合</div>
+                  <span className="text-[10px]">✦</span>
+                </div>
+                <div className="text-[9px] mt-0.5" style={{ color: 'rgba(251, 191, 36, 0.7)' }}>
+                  {selectedPlanets.length}颗行星连线
+                </div>
+              </div>
+            )}
 
             {/* 当前选中的行星 */}
             {selectedPlanets.length > 0 && (
@@ -1752,12 +2087,72 @@ export default function GameScene() {
           </div>
           {/* 操作提示 */}
           <div className="flex items-center gap-2 text-amber-100/40">
-            <span className="text-[8px] tracking-widest">· 点击进入 · 拖动连线 ·</span>
+            <span className="text-[8px] tracking-widest">· 点击连线 · 长按进入 ·</span>
           </div>
         </div>
       </div>
 
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(255,200,100,0.03) 0%, transparent 40%)' }}></div>
+
+      {/* 太阳圆环上方的组合名称显示 */}
+      {selectedPlanets.length >= 2 && (
+        <div
+          className="absolute left-1/2 pointer-events-none z-10"
+          style={{
+            top: '18%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center'
+          }}
+        >
+          <div style={{
+            fontSize: 10,
+            color: 'rgba(255,232,160,0.5)',
+            letterSpacing: 4,
+            marginBottom: 4
+          }}>
+            ✦ 当前组合 ✦
+          </div>
+          <div style={{
+            fontSize: 20,
+            color: '#ffe8a0',
+            fontWeight: 300,
+            letterSpacing: 6,
+            textShadow: '0 0 20px rgba(255,200,100,0.5)',
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>
+            {selectedPlanets.length}星连线
+          </div>
+          <div style={{
+            fontSize: 10,
+            color: 'rgba(255,232,160,0.4)',
+            letterSpacing: 2,
+            marginTop: 6
+          }}>
+            点击太阳光环进入
+          </div>
+        </div>
+      )}
+
+      {/* 没有连线时的引导提示 */}
+      {selectedPlanets.length < 2 && (
+        <div
+          className="absolute left-1/2 pointer-events-none z-10"
+          style={{
+            top: '20%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center',
+            opacity: 0.4
+          }}
+        >
+          <div style={{
+            fontSize: 11,
+            color: 'rgba(255,232,160,0.6)',
+            letterSpacing: 4,
+          }}>
+            拖动行星连线 · 解锁组合
+          </div>
+        </div>
+      )}
 
       {/* 星座解锁：淡金色背景渐变 */}
       {showUnlockPopup && (
@@ -1766,14 +2161,21 @@ export default function GameScene() {
 
       {/* 星座解锁：右下角极简文字提示 */}
       {showUnlockPopup && unlockPopupData && (
-        <div className="absolute bottom-10 right-8 pointer-events-none z-40 animate-[unlockSlide_2.5s_ease-out]">
+        <div
+          onClick={() => {
+            const comboId = [...unlockPopupData.planets].sort().join('-')
+            navigate(`/combo/${comboId}`)
+          }}
+          className="absolute bottom-10 right-8 pointer-events-auto cursor-pointer z-40 animate-[unlockSlide_4s_ease-out]"
+        >
           <div className="flex items-end gap-3 text-right">
             <div>
-              <div className="text-[8px] text-amber-200/40 tracking-[0.4em] mb-1">UNLOCKED</div>
-              <div className="text-[13px] text-amber-100/70 tracking-[0.25em] font-light">{unlockPopupData.name}</div>
+              <div className="text-[8px] text-amber-200/40 tracking-[0.4em] mb-1">✦ UNLOCKED</div>
+              <div className="text-[14px] text-amber-100/80 tracking-[0.25em] font-light">{unlockPopupData.name}</div>
+              <div className="text-[10px] text-amber-200/50 mt-1">{unlockPopupData.subtitle} · 点击进入</div>
             </div>
-            <div className="w-[1px] h-8 bg-gradient-to-b from-transparent via-amber-300/40 to-transparent"></div>
-            <div className="text-[9px] text-amber-200/50 tracking-[0.2em] pt-2">{unlockPopupData.reward}</div>
+            <div className="w-[1px] h-10 bg-gradient-to-b from-transparent via-amber-300/40 to-transparent"></div>
+            <div className="text-amber-200/60 text-xl">✦</div>
           </div>
         </div>
       )}
@@ -1792,10 +2194,33 @@ export default function GameScene() {
           80% { opacity: 1; transform: translateY(0); }
           100% { opacity: 0; transform: translateY(-5px); }
         }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.8; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: scale(0.8); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideIn {
+          0% { opacity: 0; transform: translateX(20px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
       `}</style>
 
-      <span style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', color: '#ffe8a0', letterSpacing: 4, fontSize: 11, opacity: 0.7, pointerEvents: 'none' }}>
-        点击行星进入专属功能 · 太阳周围的光环是组合实验室
+      <span style={{
+        position: 'absolute',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        color: '#ffe8a0',
+        letterSpacing: 4,
+        fontSize: 11,
+        opacity: 0.7,
+        pointerEvents: 'none',
+        textShadow: '0 0 10px rgba(255,200,100,0.3)'
+      }}>
+        · 点击行星选中 · 双击进入 ·
       </span>
     </div>
   )

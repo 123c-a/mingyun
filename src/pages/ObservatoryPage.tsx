@@ -1,30 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import PlanetVisual from '../components/PlanetVisual'
+import Scene3DBackground from '../components/Scene3DBackground'
 import { MingliStarPanel } from '../components/MingliStarPanel'
 
 export default function ObservatoryPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="w-full h-screen flex flex-col items-center justify-center relative bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 overflow-hidden">
-      {/* 背景星星效果 */}
-      <div className="absolute inset-0 overflow-hidden">
-        {Array.from({ length: 100 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-white"
-            style={{
-              width: Math.random() * 3 + 1,
-              height: Math.random() * 3 + 1,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              opacity: Math.random() * 0.8 + 0.2,
-              animation: `twinkle ${Math.random() * 3 + 2}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 2}s`,
-            }}
-          />
-        ))}
-      </div>
+    <div className="w-full h-screen flex flex-col items-center justify-center relative overflow-hidden">
+      <Scene3DBackground type="stars" primaryColor="#ffd700" secondaryColor="#ffb6c1" />
+      <div className="absolute inset-0 bg-black/20" />
 
       {/* 返回按钮 */}
       <button
@@ -42,6 +27,7 @@ export default function ObservatoryPage() {
         position: 'absolute',
         bottom: 40,
         textAlign: 'center',
+        zIndex: 10,
       }}>
         <h1 className="text-5xl font-bold text-amber-100 mb-4 drop-shadow-2xl tracking-wider">
           观测站
@@ -50,13 +36,6 @@ export default function ObservatoryPage() {
           输入生辰，点亮你的命星
         </p>
       </div>
-
-      <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.8; }
-        }
-      `}</style>
     </div>
   )
 }

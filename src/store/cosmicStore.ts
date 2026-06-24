@@ -44,18 +44,25 @@ export interface MercuryEntry {
 // 金星
 export interface VenusEntry {
   id: string
-  kind: 'letter' | 'petal'
+  kind: 'letter' | 'petal' | 'ring'
   text: string
   createdAt: number
   recipient?: string    // 写给谁
+  relationName?: string  // 关系名称（年轮用）
+  depth?: number       // 关系深度 1-5
 }
 
-// 地球（3D 拼搭，只存元信息）
+// 地球（拼搭 + 地图标记）
 export interface EarthEntry {
   id: string
-  sceneName: string
-  pieceCount: number
-  mood: string
+  kind: 'build' | 'marker'
+  sceneName?: string    // 拼搭场景名
+  pieceCount?: number   // 拼搭块数
+  mood?: string         // 拼搭心情
+  location?: string     // 地图地点名
+  country?: string      // 国家
+  emotion?: string      // 标记情绪
+  text?: string         // 标记内容 / 拼搭笔记
   createdAt: number
   note?: string
 }
@@ -110,6 +117,57 @@ export interface SunEntry {
   createdAt: number
 }
 
+// ---------- 星座类型定义 ----------
+export interface Constellation {
+  id: string
+  name: string
+  subtitle: string
+  description: string
+  planets: string[]
+  interpretation: string  // 星座解读
+  wisdom: string          // 智慧启示
+}
+
+// 星座数据
+export const CONSTELLATIONS: Constellation[] = [
+  {
+    id: 'triangle-1',
+    name: '天枢三角',
+    subtitle: '内省之座',
+    description: '水星 × 金星 × 地球',
+    planets: ['mercury', 'venus', 'earth'],
+    interpretation: '你的内心正在经历一场温柔的整合——思维、感受、落地行动，三者正在找到彼此的节奏。',
+    wisdom: '不必急于得出结论，让思绪飘一会儿，让感受流过身体，让地球承接一切。答案会在你准备好的时候自己浮现。'
+  },
+  {
+    id: 'triangle-2',
+    name: '星芒三角',
+    subtitle: '行动之座',
+    description: '火星 × 木星 × 土星',
+    planets: ['mars', 'jupiter', 'saturn'],
+    interpretation: '你正站在一个行动与责任的交汇点上——热情在燃烧，视野在扩展，时间在提醒你什么是最重要的。',
+    wisdom: '把火星的火焰导向木星的方向，用土星的耐心来打磨每一步。这不是冲刺，而是一场马拉松。'
+  },
+  {
+    id: 'cross-1',
+    name: '命运十字',
+    subtitle: '抉择之座',
+    description: '水星 × 木星 / 金星 × 土星',
+    planets: ['mercury', 'jupiter', 'venus', 'saturn'],
+    interpretation: '你的生命中正在形成一个关键的结构——思维与扩张的对话，温柔与时间的舞蹈。这两条线索正在编织你的下一步。',
+    wisdom: '倾听思维在说什么，观察扩张指向何方，感受温柔允许什么存在，注意时间在提醒什么。答案不在任何一个行星里，而是在它们的对话中。'
+  },
+  {
+    id: 'outer-triangle',
+    name: '远域三角',
+    subtitle: '蜕变之座',
+    description: '天王星 × 海王星 × 冥王星',
+    planets: ['uranus', 'neptune', 'pluto'],
+    interpretation: '深层的转变正在发生——困住你的模式正在裂开，潜意识的信息正在浮现，最深处的内核正在重生。',
+    wisdom: '这是最慢的变化，也是最深的。不要抗拒裂痕，那正是光照进来的地方。让梦境、让突破、让放下一起发生。'
+  }
+]
+
 // ---------- Store ----------
 
 interface CosmicState {
@@ -122,6 +180,15 @@ interface CosmicState {
   uranus: UranusEntry[]
   neptune: NeptuneEntry[]
   sun: SunEntry[]
+
+  // --- 星座解锁状态 ---
+  unlockedConstellations: string[]  // 已解锁的星座ID列表
+
+  // --- 星座相关方法 ---
+  unlockConstellation: (id: string) => void
+  isConstellationUnlocked: (id: string) => boolean
+  getUnlockedConstellations: () => Constellation[]
+  getConstellationByPlanets: (planets: string[]) => Constellation | null
 
   // --- 添加/删除 ---
   addMercury: (e: Omit<MercuryEntry, 'id' | 'createdAt'>) => void
@@ -150,7 +217,7 @@ interface CosmicState {
   totalEntries: () => number
 }
 
-const PLANET_META: Record<PlanetId, Omit<PlanetMeta, 'itemsCount' | 'updatedAt'>> = {
+export const PLANET_META: Record<PlanetId, Omit<PlanetMeta, 'itemsCount' | 'updatedAt'>> = {
   mercury: { id: 'mercury', name: '水星', title: '思绪清', subtitle: 'M E R C U R Y', color: '#d8d4c8', bgColor: '#1a1a2a', description: '把脑子里盘旋的思绪放下来' },
   venus:   { id: 'venus',   name: '金星', title: '情之湾', subtitle: 'V E N U S',     color: '#ffd8c0', bgColor: '#2a1818', description: '温柔的话、未寄出的信' },
   earth:   { id: 'earth',   name: '地球', title: '释怀锚地', subtitle: 'E A R T H',   color: '#a8c8e8', bgColor: '#0a1828', description: '用几何拼搭出当下的感受' },
@@ -168,6 +235,31 @@ export const useCosmicStore = create<CosmicState>()(
   persist(
     (set, get) => ({
       mercury: [], venus: [], earth: [], mars: [], jupiter: [], saturn: [], uranus: [], neptune: [], sun: [],
+
+      // 星座解锁状态
+      unlockedConstellations: [],
+
+      // 星座相关方法
+      unlockConstellation: (id) => set((s) => ({
+        unlockedConstellations: s.unlockedConstellations.includes(id)
+          ? s.unlockedConstellations
+          : [...s.unlockedConstellations, id]
+      })),
+
+      isConstellationUnlocked: (id) => get().unlockedConstellations.includes(id),
+
+      getUnlockedConstellations: () => {
+        const s = get()
+        return CONSTELLATIONS.filter(c => s.unlockedConstellations.includes(c.id))
+      },
+
+      getConstellationByPlanets: (planets) => {
+        return CONSTELLATIONS.find(c => {
+          const cPlanets = c.planets
+          // 检查是否所有需要的行星都在选中的行星中
+          return cPlanets.every(p => planets.includes(p))
+        }) || null
+      },
 
       addMercury: (e) => set((s) => ({ mercury: [...s.mercury, { ...e, id: nowId(), createdAt: Date.now() }] })),
       addVenus:   (e) => set((s) => ({ venus:   [...s.venus,   { ...e, id: nowId(), createdAt: Date.now() }] })),
@@ -222,11 +314,16 @@ export function serializeForAI(planetIds: PlanetId[]): string {
   if (planetIds.includes('venus') && s.venus.length) {
     const letters = s.venus.filter((x) => x.kind === 'letter')
     const petals = s.venus.filter((x) => x.kind === 'petal')
+    const rings = s.venus.filter((x) => x.kind === 'ring')
     if (letters.length) parts.push(`【金星 · 未寄出的信】共${letters.length}封：\n` + letters.map((x) => `【致${x.recipient || '未命名'}】\n${x.text}`).join('\n\n'))
     if (petals.length) parts.push(`【金星 · 三瓣温柔】共${petals.length}句：\n` + petals.map((x) => `· ${x.text}`).join('\n'))
+    if (rings.length) parts.push(`【金星 · 关系的年轮】共${rings.length}段关系：\n` + rings.map((x) => `· ${x.relationName || '某段关系'}（深度${x.depth || 3}/5）：${x.text}`).join('\n'))
   }
   if (planetIds.includes('earth') && s.earth.length) {
-    parts.push(`【地球 · 治愈拼搭】共${s.earth.length}个场景：\n` + s.earth.map((x) => `· "${x.sceneName}" ${x.pieceCount}件几何体 · 心情:${x.mood}${x.note ? ' · ' + x.note : ''}`).join('\n'))
+    const builds = s.earth.filter((x) => x.kind === 'build')
+    const markers = s.earth.filter((x) => x.kind === 'marker')
+    if (builds.length) parts.push(`【地球 · 治愈拼搭】共${builds.length}个场景：\n` + builds.map((x) => `· "${x.sceneName}" ${x.pieceCount || 0}件几何体 · 心情:${x.mood || '未记录'}${x.note ? ' · ' + x.note : ''}`).join('\n'))
+    if (markers.length) parts.push(`【地球 · 足迹地图】共${markers.length}个标记：\n` + markers.map((x) => `· ${x.location || '某地'}（${x.country || '未知'}）[${x.emotion || '无情绪'}]：${x.text || ''}`).join('\n'))
   }
   if (planetIds.includes('mars') && s.mars.length) {
     parts.push(`【火星 · 心火炼】共${s.mars.length}条：\n` + s.mars.map((x) => `· [${x.emotion}] ${x.text}`).join('\n'))
