@@ -1945,6 +1945,14 @@ export default function GameScene() {
 
       {/* 连线解谜状态面板（可折叠） */}
       <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-auto select-none z-20 flex flex-col gap-3">
+        {/* AR星空按钮 */}
+        <button
+          onClick={() => navigate('/ar-star')}
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-purple-200/30 hover:border-purple-200/60 text-purple-200/70 hover:text-purple-200 text-lg flex items-center justify-center transition-all shadow-lg shadow-purple-900/20"
+          title="AR星空体验"
+        >
+          ✨
+        </button>
         {/* 命理星盘按钮 */}
         <button
           onClick={() => navigate('/observatory')}

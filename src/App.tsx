@@ -70,6 +70,7 @@ import RainbowBridgePage from './pages/RainbowBridgePage'
 import CosmicLetterPage from './pages/CosmicLetterPage'
 import SelfLovePage from './pages/SelfLovePage'
 import AgentPage from './pages/AgentPage'
+import ARStarPage from './pages/ARStarPage'
 import FloatingOrb from './components/agent/FloatingOrb'
 
 export default function App() {
@@ -79,6 +80,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<GalaxyNav />} />
         <Route path="/agent" element={<AgentPage />} />
+        <Route path="/ar-star" element={<ARStarPage />} />
         <Route path="/observatory" element={<ObservatoryPage />} />
       <Route path="/universe" element={<UniversePage />} />
       <Route path="/timeline" element={<TimelinePage />} />
