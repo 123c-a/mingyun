@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { planetNames, planetColors, getComboConfig } from '../data/comboConfigs'
+import { planetNames, planetColors, getComboConfig, getComboId } from '../data/comboConfigs'
+import ComboRelationsPanel from '../components/ComboRelationsPanel'
+import StarWanderWidget from '../components/StarWanderWidget'
 import {
   stringToSeed,
   generateComboName,
@@ -55,6 +57,12 @@ export default function DynamicComboPage() {
   const seed = useMemo(() => stringToSeed(validPlanets.sort().join('-')), [validPlanets])
 
   const existingConfig = getComboConfig(validPlanets)
+  
+  const comboLookupId = useMemo(() => {
+    const predefinedId = getComboId(validPlanets)
+    if (predefinedId) return predefinedId
+    return [...validPlanets].sort().join('-')
+  }, [validPlanets])
 
   const comboInfo = useMemo(() => {
     if (existingConfig) {
@@ -1465,6 +1473,24 @@ export default function DynamicComboPage() {
           ) : (
             renderModuleContent(activeTab)
           )}
+        </div>
+
+        {/* 关联推荐 */}
+        <div className="mt-10 mb-6">
+          <StarWanderWidget
+            currentComboId={comboLookupId}
+            primaryColor={theme.primary}
+            secondaryColor={theme.secondary}
+            accentText="#ffffff"
+            glowColor={theme.primary}
+          />
+          <ComboRelationsPanel
+            comboId={comboLookupId}
+            primaryColor={theme.primary}
+            secondaryColor={theme.secondary}
+            accentText="#ffffff"
+            glowColor={theme.primary}
+          />
         </div>
 
         {/* 底部 */}

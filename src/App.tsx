@@ -21,6 +21,7 @@ import LegoBuilderPage from './pages/LegoBuilderPage'
 import HealingBuilderPage from './pages/HealingBuilderPage'
 import MercuryVenusPage from './pages/combos/MercuryVenusPage'
 import VenusEarthPage from './pages/combos/VenusEarthPage'
+import EarthVenusPage from './pages/combos/EarthVenusPage'
 import EarthMarsPage from './pages/combos/EarthMarsPage'
 import MercuryMarsPage from './pages/combos/MercuryMarsPage'
 import VenusMarsPage from './pages/combos/VenusMarsPage'
@@ -104,6 +105,7 @@ export default function App() {
       {/* 专属组合页面（优先匹配） */}
       <Route path="/combo/mercury-venus" element={<MercuryVenusPage />} />
       <Route path="/combo/venus-earth" element={<VenusEarthPage />} />
+      <Route path="/combo/earth-venus" element={<EarthVenusPage />} />
       <Route path="/combo/earth-mars" element={<EarthMarsPage />} />
       <Route path="/combo/mercury-mars" element={<MercuryMarsPage />} />
       <Route path="/combo/venus-mars" element={<VenusMarsPage />} />

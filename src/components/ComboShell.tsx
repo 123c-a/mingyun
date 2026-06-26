@@ -1,15 +1,19 @@
 import { ReactNode, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ComboConfig, planetNames } from '../data/comboConfigs'
+import ComboRelationsPanel from './ComboRelationsPanel'
+import StarWanderWidget from './StarWanderWidget'
 
 export function ComboShell({
   config,
   children,
   accent,
+  showRelations = true,
 }: {
   config: ComboConfig
   children: ReactNode
   accent?: ReactNode
+  showRelations?: boolean
 }) {
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -200,6 +204,25 @@ export function ComboShell({
 
       <div style={{ position: 'relative', zIndex: 2, padding: '20px 60px 80px', maxWidth: 1200, margin: '0 auto' }}>
         {children}
+
+        {showRelations && (
+          <>
+            <StarWanderWidget
+              currentComboId={config.id}
+              primaryColor={config.primaryColor}
+              secondaryColor={config.secondaryColor}
+              accentText={config.accentText}
+              glowColor={config.glowColor}
+            />
+            <ComboRelationsPanel
+              comboId={config.id}
+              primaryColor={config.primaryColor}
+              secondaryColor={config.secondaryColor}
+              accentText={config.accentText}
+              glowColor={config.glowColor}
+            />
+          </>
+        )}
       </div>
     </div>
   )

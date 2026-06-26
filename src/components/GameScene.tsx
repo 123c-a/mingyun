@@ -164,8 +164,8 @@ function blendColor(c1: THREE.Color | string, c2: THREE.Color | string, ratio: n
 // 快速行星纹理（512x256，仅颜色图）
 function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 256
+  canvas.width = 1024
+  canvas.height = 512
   const ctx = canvas.getContext('2d')!
   const w = canvas.width, h = canvas.height
   const base = new THREE.Color(data.color)
@@ -174,7 +174,6 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   const shadow = new THREE.Color(data.shadowColor)
   const seed = data.id.length * 1000
 
-  // 基础渐变
   const bg = ctx.createLinearGradient(0, 0, 0, h)
   bg.addColorStop(0, blendColor(base, highlight, 0.35))
   bg.addColorStop(0.3, data.color)
@@ -183,18 +182,17 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, w, h)
 
-  // 大尺度噪声色块（低频）
-  for (let y = 0; y < h; y += 4) {
-    for (let x = 0; x < w; x += 4) {
-      const n = fbmFast(x / w * 6, y / h * 3, 4, seed)
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const n = fbmFast(x / w * 8, y / h * 5, 5, seed)
       if (n > 0.58) {
         const t = (n - 0.58) / 0.42
-        ctx.fillStyle = `rgba(${Math.floor(highlight.r * 255)},${Math.floor(highlight.g * 255)},${Math.floor(highlight.b * 255)},${t * 0.3})`
-        ctx.fillRect(x, y, 4, 4)
+        ctx.fillStyle = `rgba(${Math.floor(highlight.r * 255)},${Math.floor(highlight.g * 255)},${Math.floor(highlight.b * 255)},${t * 0.25})`
+        ctx.fillRect(x, y, 2, 2)
       } else if (n < 0.38) {
         const t = (0.38 - n) / 0.38
-        ctx.fillStyle = `rgba(${Math.floor(shadow.r * 255)},${Math.floor(shadow.g * 255)},${Math.floor(shadow.b * 255)},${t * 0.35})`
-        ctx.fillRect(x, y, 4, 4)
+        ctx.fillStyle = `rgba(${Math.floor(shadow.r * 255)},${Math.floor(shadow.g * 255)},${Math.floor(shadow.b * 255)},${t * 0.3})`
+        ctx.fillRect(x, y, 2, 2)
       }
     }
   }
@@ -202,122 +200,370 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   // --- 行星专属外观 ---
   // 地球：蓝色海洋 + 绿色大陆
   if (data.id === 'earth') {
-    // 海洋底层
     const ocean = ctx.createLinearGradient(0, 0, 0, h)
-    ocean.addColorStop(0, '#2a5890')
-    ocean.addColorStop(0.5, '#3a7ab8')
-    ocean.addColorStop(1, '#1a3868')
+    ocean.addColorStop(0, '#1a4880')
+    ocean.addColorStop(0.3, '#2868a8')
+    ocean.addColorStop(0.5, '#3078c0')
+    ocean.addColorStop(0.7, '#2868a8')
+    ocean.addColorStop(1, '#153860')
     ctx.fillStyle = ocean
     ctx.fillRect(0, 0, w, h)
-    // 绘制大陆形状
+
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const n = fbmFast(x / w * 10, y / h * 8, 5, 7777)
+        if (n > 0.52) {
+          const t = (n - 0.52) / 0.48
+          ctx.fillStyle = `rgba(100,180,255,${t * 0.15})`
+          ctx.fillRect(x, y, 2, 2)
+        }
+      }
+    }
+
     const continents = [
-      { x: 80, y: 80, rx: 60, ry: 40, color: '#4a8a48' },
-      { x: 200, y: 60, rx: 80, ry: 50, color: '#6a9a58' },
-      { x: 350, y: 90, rx: 70, ry: 45, color: '#5a8a50' },
-      { x: 120, y: 160, rx: 50, ry: 35, color: '#4a8a48' },
-      { x: 280, y: 170, rx: 90, ry: 55, color: '#6a9a58' },
-      { x: 430, y: 150, rx: 40, ry: 30, color: '#5a8a50' },
-      { x: 50, y: 200, rx: 35, ry: 25, color: '#4a8a48' },
-      { x: 450, y: 60, rx: 30, ry: 20, color: '#6a9a58' }
+      { x: 150, y: 140, rx: 110, ry: 80, color: '#4a8a48' },
+      { x: 380, y: 110, rx: 150, ry: 100, color: '#6a9a58' },
+      { x: 650, y: 170, rx: 130, ry: 90, color: '#5a8a50' },
+      { x: 220, y: 320, rx: 90, ry: 70, color: '#4a8a48' },
+      { x: 520, y: 340, rx: 170, ry: 110, color: '#6a9a58' },
+      { x: 820, y: 300, rx: 70, ry: 60, color: '#5a8a50' },
+      { x: 80, y: 400, rx: 60, ry: 45, color: '#4a7a40' },
+      { x: 860, y: 110, rx: 55, ry: 40, color: '#6a9a58' },
+      { x: 480, y: 60, rx: 40, ry: 30, color: '#e8e8e0' },
+      { x: 500, y: 460, rx: 180, ry: 50, color: '#e0e8f0' },
     ]
     continents.forEach((c, i) => {
       const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.max(c.rx, c.ry))
       grad.addColorStop(0, c.color)
-      grad.addColorStop(0.7, c.color)
-      grad.addColorStop(1, 'rgba(58,122,184,0)')
+      grad.addColorStop(0.6, c.color)
+      grad.addColorStop(1, 'rgba(40,100,160,0)')
       ctx.fillStyle = grad
       ctx.beginPath()
-      ctx.ellipse(c.x, c.y, c.rx, c.ry, Math.sin(i) * 0.3, 0, Math.PI * 2)
+      ctx.ellipse(c.x, c.y, c.rx, c.ry, Math.sin(i * 0.7) * 0.4, 0, Math.PI * 2)
       ctx.fill()
     })
-    // 添加一些小的绿色岛屿
-    for (let i = 0; i < 25; i++) {
+
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const n = fbmFast(x / w * 15, y / h * 12, 4, 3333)
+        if (n > 0.62) {
+          const t = (n - 0.62) / 0.38
+          const px = x, py = y
+          const imgData = ctx.getImageData(px, py, 1, 1).data
+          const isLand = imgData[1] > 100 && imgData[2] < 150
+          if (isLand) {
+            ctx.fillStyle = `rgba(80,140,70,${t * 0.4})`
+            ctx.fillRect(x, y, 3, 3)
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < 50; i++) {
       const x = Math.random() * w, y = Math.random() * h
-      const size = 8 + Math.random() * 20
+      const size = 12 + Math.random() * 35
       const grad = ctx.createRadialGradient(x, y, 0, x, y, size)
-      const col = Math.random() > 0.5 ? '#5a8a50' : '#6a9a58'
+      const col = Math.random() > 0.5 ? '#5a8a50' : '#7aaa60'
       grad.addColorStop(0, col)
-      grad.addColorStop(1, 'rgba(58,122,184,0)')
+      grad.addColorStop(1, 'rgba(40,100,160,0)')
       ctx.fillStyle = grad
       ctx.beginPath()
       ctx.arc(x, y, size, 0, Math.PI * 2)
       ctx.fill()
     }
-    // 添加白色云层
-    for (let i = 0; i < 15; i++) {
+
+    for (let i = 0; i < 40; i++) {
       const x = Math.random() * w, y = Math.random() * h
-      const rx = 30 + Math.random() * 50, ry = 10 + Math.random() * 20
+      const rx = 50 + Math.random() * 80, ry = 15 + Math.random() * 30
       const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry))
-      grad.addColorStop(0, 'rgba(255,255,255,0.5)')
+      grad.addColorStop(0, 'rgba(255,255,255,0.45)')
+      grad.addColorStop(0.5, 'rgba(255,255,255,0.2)')
       grad.addColorStop(1, 'rgba(255,255,255,0)')
       ctx.fillStyle = grad
       ctx.beginPath()
       ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2)
       ctx.fill()
     }
+
+    const polarN = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 40, 120)
+    polarN.addColorStop(0, 'rgba(240,248,255,0.9)')
+    polarN.addColorStop(0.5, 'rgba(220,235,250,0.5)')
+    polarN.addColorStop(1, 'rgba(200,220,240,0)')
+    ctx.fillStyle = polarN
+    ctx.fillRect(0, 0, w, 80)
+
+    const polarS = ctx.createRadialGradient(w / 2, h, 0, w / 2, h - 40, 120)
+    polarS.addColorStop(0, 'rgba(230,240,250,0.85)')
+    polarS.addColorStop(0.5, 'rgba(210,225,240,0.45)')
+    polarS.addColorStop(1, 'rgba(190,210,230,0)')
+    ctx.fillStyle = polarS
+    ctx.fillRect(0, h - 80, w, 80)
   }
 
   // 木星：明显的横向条纹 + 大红斑
   if (data.id === 'jupiter') {
-    // 覆盖条纹
+    const jupiterBg = ctx.createLinearGradient(0, 0, 0, h)
+    jupiterBg.addColorStop(0, '#a87848')
+    jupiterBg.addColorStop(0.5, '#c89868')
+    jupiterBg.addColorStop(1, '#886038')
+    ctx.fillStyle = jupiterBg
+    ctx.fillRect(0, 0, w, h)
+
     const bands = [
-      { y: 20, h: 25, c1: '#c89868', c2: '#e8b888' },
-      { y: 45, h: 30, c1: '#e8b888', c2: '#fff0d0' },
-      { y: 75, h: 20, c1: '#a87848', c2: '#c89868' },
-      { y: 95, h: 35, c1: '#f0c898', c2: '#fff0d0' },
-      { y: 130, h: 25, c1: '#8a6038', c2: '#a87848' },
-      { y: 155, h: 35, c1: '#e8b888', c2: '#fff0d0' },
-      { y: 190, h: 30, c1: '#a87848', c2: '#c89868' },
-      { y: 220, h: 36, c1: '#e8b888', c2: '#fff0d0' }
+      { y: 10, h: 40, c1: '#c89868', c2: '#e8c090', type: 'light' },
+      { y: 50, h: 50, c1: '#e8c090', c2: '#fff0d0', type: 'bright' },
+      { y: 100, h: 35, c1: '#886038', c2: '#a87848', type: 'dark' },
+      { y: 135, h: 55, c1: '#f0d0a0', c2: '#fff8e0', type: 'bright' },
+      { y: 190, h: 45, c1: '#705028', c2: '#906838', type: 'dark' },
+      { y: 235, h: 60, c1: '#e8c090', c2: '#fff0d0', type: 'bright' },
+      { y: 295, h: 40, c1: '#886038', c2: '#a87848', type: 'dark' },
+      { y: 335, h: 55, c1: '#f0d0a0', c2: '#fff8e0', type: 'bright' },
+      { y: 390, h: 45, c1: '#a87848', c2: '#c89868', type: 'light' },
+      { y: 435, h: 77, c1: '#e8c090', c2: '#fff0d0', type: 'bright' },
     ]
     bands.forEach((b, idx) => {
       const grad = ctx.createLinearGradient(0, b.y, 0, b.y + b.h)
       grad.addColorStop(0, b.c1)
-      grad.addColorStop(0.5, b.c2)
+      grad.addColorStop(0.3, b.c2)
+      grad.addColorStop(0.7, b.c2)
       grad.addColorStop(1, b.c1)
       ctx.fillStyle = grad
       ctx.fillRect(0, b.y, w, b.h)
-      // 添加条纹的波浪效果
-      for (let x = 0; x < w; x += 8) {
-        const wave = Math.sin(x / 40 + idx) * 3
-        ctx.fillStyle = `rgba(138,96,56,0.3)`
-        ctx.fillRect(x, b.y + wave, 8, 2)
+
+      for (let x = 0; x < w; x += 4) {
+        const wave = Math.sin(x / 60 + idx * 0.8) * 4 + Math.sin(x / 30 + idx * 1.5) * 2
+        ctx.fillStyle = b.type === 'dark' ? 'rgba(80,50,20,0.25)' : 'rgba(160,110,60,0.2)'
+        ctx.fillRect(x, b.y + wave, 4, 2)
       }
     })
-    // 大红斑
-    const spotX = 380, spotY = 140
-    const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, 50)
-    spotGrad.addColorStop(0, '#d83a2a')
-    spotGrad.addColorStop(0.5, '#a82a1a')
-    spotGrad.addColorStop(1, 'rgba(138,42,26,0)')
+
+    for (let i = 0; i < 15; i++) {
+      const y = 30 + Math.random() * (h - 60)
+      const rx = 80 + Math.random() * 150
+      const ry = 8 + Math.random() * 20
+      const x = Math.random() * w
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, rx)
+      grad.addColorStop(0, 'rgba(255,240,210,0.25)')
+      grad.addColorStop(0.5, 'rgba(255,220,180,0.1)')
+      grad.addColorStop(1, 'rgba(255,200,150,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.ellipse(x, y, rx, ry, Math.random() * 0.3, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const spotX = 720, spotY = 280
+    const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, 70)
+    spotGrad.addColorStop(0, '#e85030')
+    spotGrad.addColorStop(0.3, '#c83020')
+    spotGrad.addColorStop(0.6, '#a02010')
+    spotGrad.addColorStop(1, 'rgba(120,30,20,0)')
     ctx.fillStyle = spotGrad
     ctx.beginPath()
-    ctx.ellipse(spotX, spotY, 50, 25, 0.2, 0, Math.PI * 2)
+    ctx.ellipse(spotX, spotY, 70, 38, 0.15, 0, Math.PI * 2)
+    ctx.fill()
+
+    const innerSpotGrad = ctx.createRadialGradient(spotX - 10, spotY - 5, 0, spotX, spotY, 45)
+    innerSpotGrad.addColorStop(0, 'rgba(255,150,100,0.4)')
+    innerSpotGrad.addColorStop(0.5, 'rgba(230,100,60,0.2)')
+    innerSpotGrad.addColorStop(1, 'rgba(200,80,40,0)')
+    ctx.fillStyle = innerSpotGrad
+    ctx.beginPath()
+    ctx.ellipse(spotX - 10, spotY - 5, 45, 22, 0.15, 0, Math.PI * 2)
     ctx.fill()
   }
 
   // 土星：柔和细腻的横向条纹（真实土星外观）
   if (data.id === 'saturn') {
-    // 浅黄褐色基础
     const saturnBg = ctx.createLinearGradient(0, 0, 0, h)
-    saturnBg.addColorStop(0, '#d8c8a8')
-    saturnBg.addColorStop(0.5, '#e8dcc0')
-    saturnBg.addColorStop(1, '#c8b898')
+    saturnBg.addColorStop(0, '#c8b890')
+    saturnBg.addColorStop(0.3, '#e0d0a8')
+    saturnBg.addColorStop(0.5, '#ede0c0')
+    saturnBg.addColorStop(0.7, '#d8c8a0')
+    saturnBg.addColorStop(1, '#b8a880')
     ctx.fillStyle = saturnBg
     ctx.fillRect(0, 0, w, h)
 
-    // 细腻的横向条纹（使用更浅的颜色）
     const bands = [
-      { y: 5, h: 18, c1: 'rgba(220,205,165,0.5)', c2: 'rgba(245,235,195,0.6)' },
-      { y: 23, h: 25, c1: 'rgba(195,180,145,0.45)', c2: 'rgba(215,200,160,0.5)' },
-      { y: 48, h: 30, c1: 'rgba(235,220,175,0.55)', c2: 'rgba(250,240,200,0.6)' },
-      { y: 78, h: 22, c1: 'rgba(200,185,145,0.4)', c2: 'rgba(220,205,165,0.5)' },
-      { y: 100, h: 28, c1: 'rgba(240,225,180,0.5)', c2: 'rgba(255,245,205,0.55)' },
-      { y: 128, h: 25, c1: 'rgba(205,190,150,0.45)', c2: 'rgba(225,210,170,0.5)' },
-      { y: 153, h: 32, c1: 'rgba(235,220,175,0.5)', c2: 'rgba(250,238,195,0.55)' },
-      { y: 185, h: 22, c1: 'rgba(210,195,155,0.45)', c2: 'rgba(230,215,175,0.5)' },
-      { y: 207, h: 28, c1: 'rgba(240,228,188,0.5)', c2: 'rgba(255,245,210,0.55)' },
-      { y: 235, h: 21, c1: 'rgba(200,185,145,0.4)', c2: 'rgba(220,205,165,0.5)' }
+      { y: 5, h: 30, c1: 'rgba(210,195,155,0.5)', c2: 'rgba(240,230,190,0.6)' },
+      { y: 35, h: 40, c1: 'rgba(190,175,135,0.45)', c2: 'rgba(215,200,160,0.5)' },
+      { y: 75, h: 45, c1: 'rgba(235,220,180,0.55)', c2: 'rgba(250,242,205,0.6)' },
+      { y: 120, h: 35, c1: 'rgba(200,185,145,0.4)', c2: 'rgba(225,210,170,0.5)' },
+      { y: 155, h: 50, c1: 'rgba(240,228,188,0.52)', c2: 'rgba(255,248,215,0.58)' },
+      { y: 205, h: 40, c1: 'rgba(205,190,150,0.45)', c2: 'rgba(230,215,175,0.5)' },
+      { y: 245, h: 55, c1: 'rgba(238,225,182,0.5)', c2: 'rgba(252,245,208,0.55)' },
+      { y: 300, h: 38, c1: 'rgba(210,195,155,0.45)', c2: 'rgba(232,218,178,0.5)' },
+      { y: 338, h: 48, c1: 'rgba(242,230,190,0.5)', c2: 'rgba(255,248,212,0.55)' },
+      { y: 386, h: 38, c1: 'rgba(208,192,148,0.42)', c2: 'rgba(228,212,168,0.48)' },
+      { y: 424, h: 45, c1: 'rgba(235,222,178,0.48)', c2: 'rgba(250,242,200,0.52)' },
+      { y: 469, h: 43, c1: 'rgba(200,185,140,0.4)', c2: 'rgba(220,205,160,0.45)' },
+    ]
+    bands.forEach((b, idx) => {
+      const grad = ctx.createLinearGradient(0, b.y, 0, b.y + b.h)
+      grad.addColorStop(0, b.c1)
+      grad.addColorStop(0.4, b.c2)
+      grad.addColorStop(0.6, b.c2)
+      grad.addColorStop(1, b.c1)
+      ctx.fillStyle = grad
+      ctx.fillRect(0, b.y, w, b.h)
+
+      for (let x = 0; x < w; x += 6) {
+        const wave = Math.sin(x / 80 + idx * 0.6) * 3
+        ctx.fillStyle = 'rgba(180,160,120,0.15)'
+        ctx.fillRect(x, b.y + wave, 6, 1)
+      }
+    })
+
+    const hexSpotX = 600, hexSpotY = 380
+    const hexGrad = ctx.createRadialGradient(hexSpotX, hexSpotY, 0, hexSpotX, hexSpotY, 50)
+    hexGrad.addColorStop(0, 'rgba(255,245,210,0.35)')
+    hexGrad.addColorStop(0.5, 'rgba(240,225,185,0.15)')
+    hexGrad.addColorStop(1, 'rgba(220,200,160,0)')
+    ctx.fillStyle = hexGrad
+    ctx.beginPath()
+    ctx.ellipse(hexSpotX, hexSpotY, 50, 25, 0, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // 火星：红色沙漠效果 + 极冠
+  if (data.id === 'mars') {
+    const marsBg = ctx.createLinearGradient(0, 0, 0, h)
+    marsBg.addColorStop(0, '#c84020')
+    marsBg.addColorStop(0.3, '#e05030')
+    marsBg.addColorStop(0.5, '#d84828')
+    marsBg.addColorStop(0.7, '#b83820')
+    marsBg.addColorStop(1, '#902818')
+    ctx.fillStyle = marsBg
+    ctx.fillRect(0, 0, w, h)
+
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const n = fbmFast(x / w * 10, y / h * 8, 5, 8888)
+        if (n > 0.55) {
+          const t = (n - 0.55) / 0.45
+          ctx.fillStyle = `rgba(255,140,80,${t * 0.25})`
+          ctx.fillRect(x, y, 2, 2)
+        } else if (n < 0.4) {
+          const t = (0.4 - n) / 0.4
+          ctx.fillStyle = `rgba(120,40,20,${t * 0.35})`
+          ctx.fillRect(x, y, 2, 2)
+        }
+      }
+    }
+
+    const polarN = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 15, 100)
+    polarN.addColorStop(0, 'rgba(255,250,240,0.9)')
+    polarN.addColorStop(0.4, 'rgba(255,240,220,0.5)')
+    polarN.addColorStop(1, 'rgba(255,230,210,0)')
+    ctx.fillStyle = polarN
+    ctx.fillRect(0, 0, w, 60)
+
+    const polarS = ctx.createRadialGradient(w / 2, h, 0, w / 2, h - 15, 90)
+    polarS.addColorStop(0, 'rgba(250,240,225,0.8)')
+    polarS.addColorStop(0.4, 'rgba(240,225,205,0.4)')
+    polarS.addColorStop(1, 'rgba(230,215,195,0)')
+    ctx.fillStyle = polarS
+    ctx.fillRect(0, h - 60, w, 60)
+
+    const darkAreas = [
+      { x: 200, y: 180, rx: 80, ry: 40 },
+      { x: 500, y: 250, rx: 100, ry: 55 },
+      { x: 780, y: 150, rx: 70, ry: 35 },
+      { x: 350, y: 380, rx: 90, ry: 45 },
+      { x: 650, y: 400, rx: 110, ry: 50 },
+      { x: 100, y: 300, rx: 60, ry: 30 },
+      { x: 880, y: 350, rx: 75, ry: 40 },
+    ]
+    darkAreas.forEach((area, i) => {
+      const grad = ctx.createRadialGradient(area.x, area.y, 0, area.x, area.y, Math.max(area.rx, area.ry))
+      grad.addColorStop(0, 'rgba(100,30,15,0.5)')
+      grad.addColorStop(0.6, 'rgba(120,40,20,0.25)')
+      grad.addColorStop(1, 'rgba(140,50,25,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.ellipse(area.x, area.y, area.rx, area.ry, Math.sin(i * 0.5) * 0.3, 0, Math.PI * 2)
+      ctx.fill()
+    })
+
+    const lightAreas = [
+      { x: 300, y: 120, rx: 60, ry: 30 },
+      { x: 600, y: 180, rx: 70, ry: 35 },
+      { x: 150, y: 250, rx: 50, ry: 25 },
+    ]
+    lightAreas.forEach((area, i) => {
+      const grad = ctx.createRadialGradient(area.x, area.y, 0, area.x, area.y, Math.max(area.rx, area.ry))
+      grad.addColorStop(0, 'rgba(255,180,120,0.4)')
+      grad.addColorStop(1, 'rgba(255,160,100,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.ellipse(area.x, area.y, area.rx, area.ry, Math.cos(i * 0.7) * 0.2, 0, Math.PI * 2)
+      ctx.fill()
+    })
+  }
+
+  // 天王星：蓝绿色冰巨星，均匀的淡蓝绿色调
+  if (data.id === 'uranus') {
+    const uranusBg = ctx.createLinearGradient(0, 0, 0, h)
+    uranusBg.addColorStop(0, '#a8e5f0')
+    uranusBg.addColorStop(0.3, '#95dce8')
+    uranusBg.addColorStop(0.5, '#88d4e0')
+    uranusBg.addColorStop(0.7, '#7ac8d8')
+    uranusBg.addColorStop(1, '#68b8c8')
+    ctx.fillStyle = uranusBg
+    ctx.fillRect(0, 0, w, h)
+
+    for (let band = 0; band < 8; band++) {
+      const yBase = (band / 8) * h + 20
+      const grad = ctx.createLinearGradient(0, yBase, 0, yBase + 35)
+      grad.addColorStop(0, 'rgba(180,235,245,0.2)')
+      grad.addColorStop(0.5, 'rgba(200,245,255,0.35)')
+      grad.addColorStop(1, 'rgba(180,235,245,0.2)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, yBase, w, 35)
+    }
+
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const n = fbmFast(x / w * 7, y / h * 5, 4, 6666)
+        if (n > 0.6) {
+          const t = (n - 0.6) / 0.4
+          ctx.fillStyle = `rgba(220,250,255,${t * 0.18})`
+          ctx.fillRect(x, y, 3, 3)
+        }
+      }
+    }
+
+    const polarGlowN = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 30, 80)
+    polarGlowN.addColorStop(0, 'rgba(200,240,250,0.4)')
+    polarGlowN.addColorStop(1, 'rgba(180,230,240,0)')
+    ctx.fillStyle = polarGlowN
+    ctx.fillRect(0, 0, w, 60)
+
+    const polarGlowS = ctx.createRadialGradient(w / 2, h, 0, w / 2, h - 30, 80)
+    polarGlowS.addColorStop(0, 'rgba(200,240,250,0.35)')
+    polarGlowS.addColorStop(1, 'rgba(180,230,240,0)')
+    ctx.fillStyle = polarGlowS
+    ctx.fillRect(0, h - 60, w, 60)
+  }
+
+  if (data.id === 'neptune') {
+    const neptuneBg = ctx.createLinearGradient(0, 0, 0, h)
+    neptuneBg.addColorStop(0, '#4068d8')
+    neptuneBg.addColorStop(0.3, '#3058c8')
+    neptuneBg.addColorStop(0.5, '#2850b8')
+    neptuneBg.addColorStop(0.7, '#2048a8')
+    neptuneBg.addColorStop(1, '#183888')
+    ctx.fillStyle = neptuneBg
+    ctx.fillRect(0, 0, w, h)
+
+    const bands = [
+      { y: 10, h: 40, c1: 'rgba(40,70,160,0.4)', c2: 'rgba(60,90,190,0.2)' },
+      { y: 60, h: 50, c1: 'rgba(80,120,220,0.3)', c2: 'rgba(100,140,240,0.15)' },
+      { y: 130, h: 45, c1: 'rgba(30,55,140,0.45)', c2: 'rgba(50,75,170,0.25)' },
+      { y: 200, h: 55, c1: 'rgba(70,110,210,0.35)', c2: 'rgba(90,130,230,0.2)' },
+      { y: 280, h: 45, c1: 'rgba(35,60,150,0.4)', c2: 'rgba(55,80,180,0.2)' },
+      { y: 350, h: 50, c1: 'rgba(75,115,215,0.3)', c2: 'rgba(95,135,235,0.18)' },
+      { y: 420, h: 45, c1: 'rgba(40,65,155,0.4)', c2: 'rgba(60,85,185,0.22)' },
     ]
     bands.forEach((b, idx) => {
       const grad = ctx.createLinearGradient(0, b.y, 0, b.y + b.h)
@@ -326,97 +572,49 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
       grad.addColorStop(1, b.c1)
       ctx.fillStyle = grad
       ctx.fillRect(0, b.y, w, b.h)
+
+      for (let x = 0; x < w; x += 5) {
+        const wave = Math.sin(x / 70 + idx * 0.9) * 3
+        ctx.fillStyle = 'rgba(20,40,120,0.2)'
+        ctx.fillRect(x, b.y + wave, 5, 1)
+      }
     })
-  }
 
-  // 火星：红色沙漠效果 + 极冠
-  if (data.id === 'mars') {
-    // 红色基础
-    const marsBg = ctx.createLinearGradient(0, 0, 0, h)
-    marsBg.addColorStop(0, '#d84a2a')
-    marsBg.addColorStop(0.3, '#e85a3a')
-    marsBg.addColorStop(0.7, '#b83a2a')
-    marsBg.addColorStop(1, '#982a1a')
-    ctx.fillStyle = marsBg
-    ctx.fillRect(0, 0, w, h)
-    // 白色北极冠
-    const polarN = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 10, 80)
-    polarN.addColorStop(0, 'rgba(255,255,255,0.85)')
-    polarN.addColorStop(0.5, 'rgba(255,245,235,0.6)')
-    polarN.addColorStop(1, 'rgba(255,245,235,0)')
-    ctx.fillStyle = polarN
-    ctx.fillRect(0, 0, w, 40)
-    // 白色南极冠
-    const polarS = ctx.createRadialGradient(w / 2, h, 0, w / 2, h - 10, 80)
-    polarS.addColorStop(0, 'rgba(255,245,235,0.7)')
-    polarS.addColorStop(0.5, 'rgba(255,235,225,0.4)')
-    polarS.addColorStop(1, 'rgba(255,235,225,0)')
-    ctx.fillStyle = polarS
-    ctx.fillRect(0, h - 40, w, 40)
-    // 深色暗色区域
-    for (let i = 0; i < 15; i++) {
-      const x = Math.random() * w, y = 40 + Math.random() * (h - 80)
-      const rx = 30 + Math.random() * 60, ry = 15 + Math.random() * 30
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry))
-      grad.addColorStop(0, 'rgba(120,40,20,0.4)')
-      grad.addColorStop(1, 'rgba(120,40,20,0)')
-      ctx.fillStyle = grad
-      ctx.beginPath()
-      ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-
-  // 天王星：蓝绿色冰巨星，均匀的淡蓝绿色调
-  if (data.id === 'uranus') {
-    const uranusBg = ctx.createLinearGradient(0, 0, 0, h)
-    uranusBg.addColorStop(0, '#90e0f0')
-    uranusBg.addColorStop(0.3, '#80d8e8')
-    uranusBg.addColorStop(0.7, '#70c8d8')
-    uranusBg.addColorStop(1, '#60b8c8')
-    ctx.fillStyle = uranusBg
-    ctx.fillRect(0, 0, w, h)
-    // 均匀的横向云带
-    for (let band = 0; band < 6; band++) {
-      const yBase = (band / 6) * h + 15
-      const grad = ctx.createLinearGradient(0, yBase, 0, yBase + 20)
-      grad.addColorStop(0, 'rgba(255,255,255,0.15)')
-      grad.addColorStop(0.5, 'rgba(255,255,255,0.25)')
-      grad.addColorStop(1, 'rgba(255,255,255,0.15)')
-      ctx.fillStyle = grad
-      ctx.fillRect(0, yBase, w, 20)
-    }
-  }
-
-  // 海王星：深蓝色冰巨星，有风暴
-  if (data.id === 'neptune') {
-    const neptuneBg = ctx.createLinearGradient(0, 0, 0, h)
-    neptuneBg.addColorStop(0, '#4060d8')
-    neptuneBg.addColorStop(0.3, '#3050c8')
-    neptuneBg.addColorStop(0.7, '#2040b0')
-    neptuneBg.addColorStop(1, '#103090')
-    ctx.fillStyle = neptuneBg
-    ctx.fillRect(0, 0, w, h)
-    // 深色风暴条纹
-    for (let band = 0; band < 5; band++) {
-      const yBase = (band / 5) * h + 20
-      const grad = ctx.createLinearGradient(0, yBase, 0, yBase + 25)
-      grad.addColorStop(0, 'rgba(20,40,120,0.3)')
-      grad.addColorStop(0.5, 'rgba(30,50,140,0.4)')
-      grad.addColorStop(1, 'rgba(20,40,120,0.3)')
-      ctx.fillStyle = grad
-      ctx.fillRect(0, yBase, w, 25)
-    }
-    // 大暗斑
-    const spotX = 200, spotY = 100
-    const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, 40)
-    spotGrad.addColorStop(0, 'rgba(10,20,80,0.5)')
-    spotGrad.addColorStop(0.7, 'rgba(20,30,100,0.3)')
-    spotGrad.addColorStop(1, 'rgba(30,40,120,0)')
+    const darkSpotX = 350, darkSpotY = 250
+    const spotGrad = ctx.createRadialGradient(darkSpotX, darkSpotY, 0, darkSpotX, darkSpotY, 55)
+    spotGrad.addColorStop(0, 'rgba(10,25,90,0.6)')
+    spotGrad.addColorStop(0.4, 'rgba(20,40,120,0.35)')
+    spotGrad.addColorStop(1, 'rgba(30,50,140,0)')
     ctx.fillStyle = spotGrad
     ctx.beginPath()
-    ctx.ellipse(spotX, spotY, 40, 20, 0.2, 0, Math.PI * 2)
+    ctx.ellipse(darkSpotX, darkSpotY, 55, 28, 0.1, 0, Math.PI * 2)
     ctx.fill()
+
+    const lightSpots = [
+      { x: 700, y: 180, rx: 45, ry: 15 },
+      { x: 200, y: 400, rx: 40, ry: 12 },
+      { x: 850, y: 350, rx: 35, ry: 10 },
+    ]
+    lightSpots.forEach((spot, i) => {
+      const grad = ctx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, Math.max(spot.rx, spot.ry))
+      grad.addColorStop(0, 'rgba(120,160,255,0.35)')
+      grad.addColorStop(1, 'rgba(100,140,240,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.ellipse(spot.x, spot.y, spot.rx, spot.ry, Math.sin(i * 0.5) * 0.2, 0, Math.PI * 2)
+      ctx.fill()
+    })
+
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const n = fbmFast(x / w * 9, y / h * 6, 4, 4444)
+        if (n > 0.62) {
+          const t = (n - 0.62) / 0.38
+          ctx.fillStyle = `rgba(100,140,220,${t * 0.2})`
+          ctx.fillRect(x, y, 3, 3)
+        }
+      }
+    }
   }
 
   // 冥王星：灰褐色冰封矮行星
@@ -452,49 +650,133 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   // 金星：浓密的黄色云层
   if (data.id === 'venus') {
     const venusBg = ctx.createLinearGradient(0, 0, 0, h)
-    venusBg.addColorStop(0, '#fff0c0')
-    venusBg.addColorStop(0.5, '#f0d890')
+    venusBg.addColorStop(0, '#fff0b8')
+    venusBg.addColorStop(0.3, '#f5de98')
+    venusBg.addColorStop(0.5, '#f0d888')
+    venusBg.addColorStop(0.7, '#e8cc78')
     venusBg.addColorStop(1, '#d8b860')
     ctx.fillStyle = venusBg
     ctx.fillRect(0, 0, w, h)
-    // 浓密的横向云带
-    for (let band = 0; band < 8; band++) {
-      const yBase = (band / 8) * h
-      for (let x = 0; x < w; x += 20) {
-        const wave = Math.sin(x / 80 + band) * 12
-        const y = yBase + wave + 15
-        const rx = 40 + Math.sin(band + x / 50) * 15
-        const ry = 8 + Math.random() * 4
+
+    for (let band = 0; band < 12; band++) {
+      const yBase = (band / 12) * h
+      const bandH = 30 + Math.sin(band * 0.8) * 10
+      for (let x = 0; x < w; x += 15) {
+        const wave = Math.sin(x / 100 + band * 0.7) * 15 + Math.sin(x / 50 + band * 1.3) * 6
+        const y = yBase + wave + 20
+        const rx = 50 + Math.sin(band + x / 60) * 20
+        const ry = 6 + Math.random() * 4
         const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry))
-        grad.addColorStop(0, 'rgba(255,245,200,0.5)')
-        grad.addColorStop(1, 'rgba(255,245,200,0)')
+        grad.addColorStop(0, 'rgba(255,250,210,0.4)')
+        grad.addColorStop(0.5, 'rgba(255,240,180,0.2)')
+        grad.addColorStop(1, 'rgba(255,230,150,0)')
         ctx.fillStyle = grad
         ctx.beginPath()
         ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2)
         ctx.fill()
       }
     }
+
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const n = fbmFast(x / w * 8, y / h * 6, 4, 5555)
+        if (n > 0.6) {
+          const t = (n - 0.6) / 0.4
+          ctx.fillStyle = `rgba(255,255,220,${t * 0.15})`
+          ctx.fillRect(x, y, 3, 3)
+        }
+      }
+    }
+
+    const stormSpots = [
+      { x: 250, y: 200, rx: 60, ry: 25 },
+      { x: 700, y: 300, rx: 50, ry: 20 },
+      { x: 500, y: 100, rx: 45, ry: 18 },
+    ]
+    stormSpots.forEach((spot, i) => {
+      const grad = ctx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, Math.max(spot.rx, spot.ry))
+      grad.addColorStop(0, 'rgba(220,180,100,0.4)')
+      grad.addColorStop(1, 'rgba(200,160,80,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.ellipse(spot.x, spot.y, spot.rx, spot.ry, Math.sin(i) * 0.3, 0, Math.PI * 2)
+      ctx.fill()
+    })
   }
 
   // 水星：灰色岩石，非常多陨石坑
   if (data.id === 'mercury') {
     const mercBg = ctx.createLinearGradient(0, 0, 0, h)
-    mercBg.addColorStop(0, '#b8b4a8')
-    mercBg.addColorStop(0.5, '#a8a498')
-    mercBg.addColorStop(1, '#6a6858')
+    mercBg.addColorStop(0, '#b0aca0')
+    mercBg.addColorStop(0.3, '#a09c90')
+    mercBg.addColorStop(0.5, '#908c80')
+    mercBg.addColorStop(0.7, '#807c70')
+    mercBg.addColorStop(1, '#605c50')
     ctx.fillStyle = mercBg
     ctx.fillRect(0, 0, w, h)
-    // 深色阴影区域
-    for (let i = 0; i < 20; i++) {
-      const x = Math.random() * w, y = Math.random() * h
-      const rx = 25 + Math.random() * 40, ry = 15 + Math.random() * 25
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry))
-      grad.addColorStop(0, 'rgba(60,58,48,0.45)')
-      grad.addColorStop(1, 'rgba(60,58,48,0)')
-      ctx.fillStyle = grad
-      ctx.beginPath()
-      ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2)
-      ctx.fill()
+
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const n = fbmFast(x / w * 12, y / h * 9, 5, 9999)
+        if (n > 0.6) {
+          const t = (n - 0.6) / 0.4
+          ctx.fillStyle = `rgba(200,195,180,${t * 0.3})`
+          ctx.fillRect(x, y, 2, 2)
+        } else if (n < 0.35) {
+          const t = (0.35 - n) / 0.35
+          ctx.fillStyle = `rgba(70,65,55,${t * 0.4})`
+          ctx.fillRect(x, y, 2, 2)
+        }
+      }
+    }
+
+    const bigCraters = [
+      { x: 150, y: 100, r: 50 },
+      { x: 400, y: 180, r: 60 },
+      { x: 700, y: 120, r: 45 },
+      { x: 250, y: 350, r: 55 },
+      { x: 600, y: 400, r: 50 },
+      { x: 850, y: 280, r: 40 },
+      { x: 500, y: 80, r: 35 },
+      { x: 80, y: 280, r: 42 },
+    ]
+    bigCraters.forEach((c, i) => {
+      const og = ctx.createRadialGradient(c.x, c.y, c.r * 0.4, c.x, c.y, c.r)
+      og.addColorStop(0, 'rgba(60,55,45,0.55)')
+      og.addColorStop(0.6, 'rgba(80,75,65,0.25)')
+      og.addColorStop(1, 'rgba(100,95,85,0)')
+      ctx.fillStyle = og
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill()
+
+      const ig = ctx.createRadialGradient(c.x - c.r * 0.15, c.y - c.r * 0.15, 0, c.x, c.y, c.r * 0.45)
+      ig.addColorStop(0, 'rgba(220,215,200,0.35)')
+      ig.addColorStop(1, 'rgba(200,195,180,0)')
+      ctx.fillStyle = ig
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.45, 0, Math.PI * 2); ctx.fill()
+
+      const rg = ctx.createRadialGradient(c.x, c.y, c.r * 0.85, c.x, c.y, c.r * 1.15)
+      rg.addColorStop(0, 'rgba(180,175,160,0.3)')
+      rg.addColorStop(1, 'rgba(160,155,140,0)')
+      ctx.fillStyle = rg
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.15, 0, Math.PI * 2); ctx.fill()
+    })
+
+    const midCraters = 30
+    for (let i = 0; i < midCraters; i++) {
+      const cx = Math.random() * w, cy = Math.random() * h
+      const size = 12 + Math.random() * 25
+      const og = ctx.createRadialGradient(cx, cy, size * 0.45, cx, cy, size)
+      og.addColorStop(0, 'rgba(70,65,55,0.45)')
+      og.addColorStop(0.7, 'rgba(90,85,75,0.2)')
+      og.addColorStop(1, 'rgba(110,105,95,0)')
+      ctx.fillStyle = og
+      ctx.beginPath(); ctx.arc(cx, cy, size, 0, Math.PI * 2); ctx.fill()
+
+      const ig = ctx.createRadialGradient(cx - size * 0.1, cy - size * 0.1, 0, cx, cy, size * 0.4)
+      ig.addColorStop(0, 'rgba(210,205,190,0.25)')
+      ig.addColorStop(1, 'rgba(190,185,170,0)')
+      ctx.fillStyle = ig
+      ctx.beginPath(); ctx.arc(cx, cy, size * 0.4, 0, Math.PI * 2); ctx.fill()
     }
   }
 
@@ -578,36 +860,101 @@ function makePlanetColorTexture(data: PlanetData): THREE.CanvasTexture {
   return tex
 }
 
-// 快速太阳纹理
 function makeSunColorTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 256
+  canvas.width = 1024
+  canvas.height = 512
   const ctx = canvas.getContext('2d')!
   const w = canvas.width, h = canvas.height
 
-  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
-  g.addColorStop(0, '#fff8e0'); g.addColorStop(0.15, '#ffd060'); g.addColorStop(0.4, '#ffa020'); g.addColorStop(0.7, '#ff6010'); g.addColorStop(1, '#901008')
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
+  const baseGrad = ctx.createLinearGradient(0, 0, 0, h)
+  baseGrad.addColorStop(0, '#ff9020')
+  baseGrad.addColorStop(0.15, '#ffb840')
+  baseGrad.addColorStop(0.35, '#ffd870')
+  baseGrad.addColorStop(0.5, '#fff0a0')
+  baseGrad.addColorStop(0.65, '#ffd870')
+  baseGrad.addColorStop(0.85, '#ffb030')
+  baseGrad.addColorStop(1, '#ff7010')
+  ctx.fillStyle = baseGrad
+  ctx.fillRect(0, 0, w, h)
 
-  for (let i = 0; i < 15000; i++) {
-    const x = Math.random() * w, y = Math.random() * h, s = Math.random() * 3 + 0.5
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const n = fbmFast(x / w * 12, y / h * 8, 5, 12345)
+      if (n > 0.55) {
+        const t = (n - 0.55) / 0.45
+        ctx.fillStyle = `rgba(255,255,200,${t * 0.35})`
+        ctx.fillRect(x, y, 2, 2)
+      } else if (n < 0.35) {
+        const t = (0.35 - n) / 0.35
+        ctx.fillStyle = `rgba(220,80,20,${t * 0.4})`
+        ctx.fillRect(x, y, 2, 2)
+      }
+    }
+  }
+
+  for (let i = 0; i < 60; i++) {
+    const x = Math.random() * w, y = Math.random() * h
+    const r = 15 + Math.random() * 40
+    const spotGrad = ctx.createRadialGradient(x, y, 0, x, y, r)
+    spotGrad.addColorStop(0, 'rgba(255,255,220,0.5)')
+    spotGrad.addColorStop(0.4, 'rgba(255,200,100,0.25)')
+    spotGrad.addColorStop(1, 'rgba(255,150,50,0)')
+    ctx.fillStyle = spotGrad
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+  }
+
+  for (let i = 0; i < 25; i++) {
+    const x = Math.random() * w, y = Math.random() * h
+    const r = 20 + Math.random() * 50
+    const spotGrad = ctx.createRadialGradient(x, y, 0, x, y, r)
+    spotGrad.addColorStop(0, 'rgba(180,60,20,0.5)')
+    spotGrad.addColorStop(0.5, 'rgba(200,80,30,0.25)')
+    spotGrad.addColorStop(1, 'rgba(220,100,40,0)')
+    ctx.fillStyle = spotGrad
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+  }
+
+  for (let i = 0; i < 80; i++) {
+    const x = Math.random() * w, y = Math.random() * h
+    const lw = 8 + Math.random() * 20, lh = 30 + Math.random() * 80
+    const angle = (Math.random() - 0.5) * 0.8
+    const lg = ctx.createRadialGradient(x, y, 0, x, y, Math.max(lw, lh))
+    lg.addColorStop(0, 'rgba(255,255,220,0.6)')
+    lg.addColorStop(0.3, 'rgba(255,200,100,0.3)')
+    lg.addColorStop(1, 'rgba(255,140,40,0)')
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(angle)
+    ctx.fillStyle = lg
+    ctx.beginPath()
+    ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
+  for (let i = 0; i < 30000; i++) {
+    const x = Math.random() * w, y = Math.random() * h
+    const s = Math.random() * 2 + 0.3
     const t = Math.random()
-    ctx.fillStyle = `rgba(255,${140 + Math.floor(t * 110)},${10 + Math.floor(t * 60)},${0.15 + t * 0.3})`
+    const r = 255
+    const g = 160 + Math.floor(t * 95)
+    const b = 20 + Math.floor(t * 80)
+    ctx.fillStyle = `rgba(${r},${g},${b},${0.1 + t * 0.35})`
     ctx.beginPath(); ctx.arc(x, y, s, 0, Math.PI * 2); ctx.fill()
   }
 
-  for (let i = 0; i < 40; i++) {
-    const x = Math.random() * w, y = Math.random() * h, lw = 10 + Math.random() * 25, lh = 40 + Math.random() * 120
-    const lg = ctx.createLinearGradient(x, y - lh / 2, x, y + lh / 2)
-    lg.addColorStop(0, 'rgba(255,250,200,0.45)'); lg.addColorStop(0.3, 'rgba(255,180,80,0.25)'); lg.addColorStop(1, 'rgba(200,50,10,0)')
-    ctx.save(); ctx.translate(x, y); ctx.rotate((Math.random() - 0.5) * 0.6)
-    ctx.fillStyle = lg; ctx.beginPath(); ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore()
-  }
+  const edgeGrad = ctx.createLinearGradient(0, 0, 0, h)
+  edgeGrad.addColorStop(0, 'rgba(200,50,10,0.3)')
+  edgeGrad.addColorStop(0.1, 'rgba(255,150,50,0)')
+  edgeGrad.addColorStop(0.9, 'rgba(255,150,50,0)')
+  edgeGrad.addColorStop(1, 'rgba(200,50,10,0.3)')
+  ctx.fillStyle = edgeGrad
+  ctx.fillRect(0, 0, w, h)
 
   const tex = new THREE.CanvasTexture(canvas)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.anisotropy = 8
+  tex.anisotropy = 16
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
 }
@@ -615,39 +962,69 @@ function makeSunColorTexture(): THREE.CanvasTexture {
 // 快速祥云环纹理
 function makeRingTexture(outer: string, inner: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
+  canvas.width = 1024
+  canvas.height = 128
   const ctx = canvas.getContext('2d')!
   const w = canvas.width, h = canvas.height
   const oc = new THREE.Color(outer), ic = new THREE.Color(inner)
 
   const bg = ctx.createLinearGradient(0, 0, 0, h)
-  bg.addColorStop(0, `rgba(${Math.floor(oc.r * 255)},${Math.floor(oc.g * 255)},${Math.floor(oc.b * 255)},0.5)`)
-  bg.addColorStop(0.5, `rgba(${Math.floor(ic.r * 255)},${Math.floor(ic.g * 255)},${Math.floor(ic.b * 255)},0.7)`)
-  bg.addColorStop(1, `rgba(${Math.floor(oc.r * 255)},${Math.floor(oc.g * 255)},${Math.floor(oc.b * 255)},0.5)`)
+  bg.addColorStop(0, `rgba(${Math.floor(oc.r * 255)},${Math.floor(oc.g * 255)},${Math.floor(oc.b * 255)},0.4)`)
+  bg.addColorStop(0.3, `rgba(${Math.floor(ic.r * 255)},${Math.floor(ic.g * 255)},${Math.floor(ic.b * 255)},0.65)`)
+  bg.addColorStop(0.5, `rgba(${Math.floor(ic.r * 255)},${Math.floor(ic.g * 255)},${Math.floor(ic.b * 255)},0.75)`)
+  bg.addColorStop(0.7, `rgba(${Math.floor(ic.r * 255)},${Math.floor(ic.g * 255)},${Math.floor(ic.b * 255)},0.65)`)
+  bg.addColorStop(1, `rgba(${Math.floor(oc.r * 255)},${Math.floor(oc.g * 255)},${Math.floor(oc.b * 255)},0.4)`)
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h)
 
-  for (let i = 0; i < 30; i++) {
-    const x = (i / 30) * w + Math.random() * 20, y = h / 2 + (Math.random() - 0.5) * 15, size = 20 + Math.random() * 35
+  const gaps = [
+    { y: 15, h: 3 },
+    { y: 40, h: 2 },
+    { y: 65, h: 4 },
+    { y: 90, h: 2 },
+    { y: 110, h: 3 },
+  ]
+  gaps.forEach(gap => {
+    const gapGrad = ctx.createLinearGradient(0, gap.y, 0, gap.y + gap.h)
+    gapGrad.addColorStop(0, 'rgba(0,0,0,0)')
+    gapGrad.addColorStop(0.5, 'rgba(0,0,0,0.25)')
+    gapGrad.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = gapGrad
+    ctx.fillRect(0, gap.y, w, gap.h)
+  })
+
+  for (let i = 0; i < 80; i++) {
+    const x = (i / 80) * w + Math.random() * 15
+    const y = h / 2 + (Math.random() - 0.5) * 40
+    const size = 25 + Math.random() * 50
     const grad = ctx.createRadialGradient(x, y, 0, x, y, size)
     const col = Math.random() > 0.5 ? oc : ic
-    grad.addColorStop(0, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.85)`)
-    grad.addColorStop(0.4, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.4)`)
+    grad.addColorStop(0, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.9)`)
+    grad.addColorStop(0.3, `rgba(${Math.floor(col.r * 255)},${Math.floor(col.g * 255)},${Math.floor(col.b * 255)},0.5)`)
     grad.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill()
   }
 
-  for (let i = 0; i < 40; i++) {
-    const x = Math.random() * w, y = h / 2 + (Math.random() - 0.5) * 8
-    const gg = ctx.createRadialGradient(x, y, 0, x, y, 5)
-    gg.addColorStop(0, 'rgba(255,248,200,0.9)'); gg.addColorStop(0.5, 'rgba(255,240,180,0.4)'); gg.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill()
+  for (let i = 0; i < 100; i++) {
+    const x = Math.random() * w, y = h / 2 + (Math.random() - 0.5) * 30
+    const gg = ctx.createRadialGradient(x, y, 0, x, y, 6)
+    gg.addColorStop(0, 'rgba(255,250,220,0.85)')
+    gg.addColorStop(0.4, 'rgba(255,245,200,0.4)')
+    gg.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill()
   }
+
+  const edgeFade = ctx.createLinearGradient(0, 0, 0, h)
+  edgeFade.addColorStop(0, 'rgba(0,0,0,0.3)')
+  edgeFade.addColorStop(0.15, 'rgba(0,0,0,0)')
+  edgeFade.addColorStop(0.85, 'rgba(0,0,0,0)')
+  edgeFade.addColorStop(1, 'rgba(0,0,0,0.3)')
+  ctx.fillStyle = edgeFade
+  ctx.fillRect(0, 0, w, h)
 
   const tex = new THREE.CanvasTexture(canvas)
   tex.wrapS = THREE.RepeatWrapping
   tex.wrapT = THREE.ClampToEdgeWrapping
-  tex.anisotropy = 8
+  tex.anisotropy = 16
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
 }
@@ -722,13 +1099,17 @@ function Sun({ onComposerRingClick, selectedPlanets }: { onComposerRingClick: ()
   const nodeAngles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5]
 
   return (
-    <group
-      onClick={handleSunClick}
-      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
-      onPointerOut={() => { if (!composerHovered) { setHovered(false); document.body.style.cursor = 'auto' } }}
-    >
-      <mesh ref={meshRef}><sphereGeometry args={[3.8, 48, 48]} /><meshBasicMaterial map={sunTex} /></mesh>
-      {/* 光环 — 让点击穿透 */}
+    <group>
+      <mesh
+        ref={meshRef}
+        onClick={handleSunClick}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
+        onPointerOut={() => { if (!composerHovered) { setHovered(false); document.body.style.cursor = 'auto' } }}
+      >
+        <sphereGeometry args={[3.8, 48, 48]} />
+        <meshBasicMaterial map={sunTex} />
+      </mesh>
+      {/* 光晕层 — 禁用点击 */}
       <mesh ref={glow1Ref} scale={1.18}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffd880" transparent opacity={0.5} depthWrite={false} /></mesh>
       <mesh ref={glow2Ref} scale={1.45}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ffa840" transparent opacity={0.25} depthWrite={false} /></mesh>
       <mesh ref={glow3Ref} scale={1.75}><sphereGeometry args={[3.8, 24, 24]} /><meshBasicMaterial color="#ff7020" transparent opacity={0.12} depthWrite={false} /></mesh>
